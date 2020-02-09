@@ -60,7 +60,7 @@
         </body>
         <br><br>
         <select name="model">
-            <option value="CAMP" selected>CAMP</option>
+            <option value="CAPM" selected>CAPM</option>
             <option value="FF3">FF3</option>
             <option value="HMM">HMM</option>
             <option value="LG">Logistic regression</option>
@@ -89,7 +89,7 @@
             <option value="ED">ED</option>
             <option value="XRAY">XRAY</option>
         </select>
-        <br><br>
+        <br><br><br>
 
         <body style="font-size:large;">
             Step3: Please enter start and end dates.
@@ -105,7 +105,33 @@
             <p>Please enter the end data (Format: Year-Month-Day, e.g. 2020-01-01)</p>
         </body>
         Input Text:
-        <input type="text" name="end" required><br><br>
+        <input type="text" name="end" required><br><br><br>
+
+        <body style="font-size:large;">
+            <p>Step4: Choose your parameters</p>
+        </body>
+
+        <body>
+            BIDLO: daily/monthly lowest bid price<br>
+            ASKHI: daily/monthly highest ask price<br>
+            Prc: the close price for every day/month<br>
+            Vol: the trading volume for each day/month, means that how many shares are traded during the period<br>
+            Ret: the holding period return in a day/month<br>
+            Openprc: the price of the stock when the market starts to operate every day/month<br>
+            Smb: the size factor. According to the research, small companies tend to have a higher return than big
+            companies in the long run. So this factor means by how much the return of the small companies is higher than
+            the return of the big ones.<br>
+            Hml: the growth factor. According to the research, high growth companies tend to have a higher return than
+            low growth companies in the long run. So this factor means by how much the return of the high growth
+            companies is higher than the return of the low growth ones.<br>
+
+            Mktrf: market excess return, this means by how much does the market outperformes the risk free return<br>
+            Vwret: the return that curved by the company’s size, the higher the size is, the lower this number is
+            compared to the actual return<br>
+            Exret: stock excess return, this means by how much does the stock outperformes the risk free return<br>
+
+        </body>
+        <br><br><br>
         {{data_external}}
         {{data1}}
         <br><br>

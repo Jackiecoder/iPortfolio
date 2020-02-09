@@ -8,7 +8,7 @@ model = sys.argv[1]
 company_name = sys.argv[2]
 start_data = sys.argv[3]
 end_data = sys.argv[4]
-if model == "CAMP":
+if model == "CAPM":
     a = famaFrenchMonthly(company_name, start_data, end_data)
     capm = a.predict_CAPM()
     print(f"excess return = {capm['y_CAPM']}, \npredicted actual return = {capm['ret_pre_CAPM']}, \npredicted price = {capm['prc_pre_CAPM']}, \nexplaination power = {capm['CAPM_rsquared']}")

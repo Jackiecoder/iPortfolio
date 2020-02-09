@@ -22,6 +22,7 @@ def external(request):
     company_name = request.POST.get("company_name")
     start = request.POST.get("start")
     end = request.POST.get("end")
+
     output_val = run([sys.executable,
                       "/Users/jackie/Documents/hackcwru/test.py", model, company_name, start, end], shell=False, stdout=PIPE)
     data_show = output_val.stdout.decode("utf-8")
