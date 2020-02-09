@@ -25,5 +25,5 @@ def external(request):
     output_val = run([sys.executable,
                       "/Users/jackie/Documents/hackcwru/test.py", model, company_name, start, end], shell=False, stdout=PIPE)
     data_show = output_val.stdout.decode("utf-8")
-    print("the string is : ", data_show)
+    # print("the string is : ", data_show)
     return render(request, "home.html", {'data1': data_show})

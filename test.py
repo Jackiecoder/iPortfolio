@@ -2,10 +2,8 @@ from fama_french_monthly import famaFrenchMonthly
 import sys
 import datetime
 from lg import logistic_regression
-# time = datetime.datetime.now()
-# out = "Hi %s current time is %s" % (sys.argv[1], time)
-# print(sys.argv)
-# print(out)
+# from hmm_model import hmmpredict
+
 model = sys.argv[1]
 company_name = sys.argv[2]
 start_data = sys.argv[3]
@@ -23,6 +21,13 @@ if model == "LG":
     upOrDown = a.predict()
     accuracy = a.score_model()
     if upOrDown[0]:
-        print(f"This stock will increase with {accuracy} confidence!")
+        print(
+            f"This stock price will increase with {accuracy*100}% confidence!")
     else:
-        print(f"This stock will decrease with {accuracy} confidence!")
+        print(
+            f"This stock price will decrease with {accuracy*100}% confidence!")
+
+if model == "HMM":
+    a = hmmpredict(company_name, start_data, end_data)
+    print(
+        f"prediction of next ten days price is {a['prediction of next ten days price']}, and deviation is {a['deviation']}")
