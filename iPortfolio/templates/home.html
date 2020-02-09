@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>
+        iPortfolio Script
+    </title>
+</head>
+
+<h1 style="text-align: center;">
+    Welcome To iPortfolio.tech
+</h1>
+
+<h2 style="font-size: large;">
+    What is iPortfolio.tech?
+</h2>
+
+<body>
+    iPortfolio.tech is a website designed for begainner investors.
+    What we have built is a simple tool to analyse stock price and return for beginners. Try to do some research using
+    different models, parameters and time intervals on your choice. We provide some classic financial models like CAPM
+    and FF3F and something fancy that we are interested in.
+</body>
+
+<h3 style="font-size: large;">
+    Please input parameters that you are interested in.
+</h3>
+
+<body>
+    <!-- <button onclick="location.href='{% url 'script' %}'">Execute Script</button>
+    <hr>
+    {% if data %}
+    {{data | safe}}
+    {% endif %} -->
+
+
+
+    <form action="external" method="post">
+        {% csrf_token %}
+        <!-- Input Text:
+        <input type="text" name="param" required><br><br>
+        {{data_external}}<br><br>
+        {{data1}}
+        <br><br> -->
+
+        <body style="font-size:large;">
+            <p>Step1: Please select a Model</p>
+        </body>
+
+        <body>
+            model provided:
+            CAPM: The most classic finance equation showing the linear relationship between the risk premium and excess
+            return. Usually use monthly data rather than daily data.
+            FF3F: By adding the size factor and growth factor, this model provides a more clear view of how the stock
+            return
+            is connected to the market compared to CAPM. Same as CAPM,
+            HMM: Giving the outcome with the highest probability by analyzing the hidden trends that can not be
+            observed.
+            Logistic regression: This model gives us the probability of an odd happens.
+        </body>
+        <br><br>
+        <select name="model">
+            <option value="CAMP" selected>CAMP</option>
+            <option value="FF3">FF3</option>
+            <option value="HMM">HMM</option>
+            <option value="LG">Logistic regression</option>
+        </select>
+
+        <br><br>
+
+        <body style="font-size:large;">
+            <p>Step2: Please select a company</p>
+        </body>
+        <select name="company_name">
+            <option value="ORCL">ORCL</option>
+            <option value="TROW">TROW</option>
+            <option value="MSFT" selected>MSFT</option>
+            <option value="HON">HON</option>
+            <option value="T">T</option>
+            <option value="ADM">ADM</option>
+            <option value="FISV">FISV</option>
+            <option value="FISV">FISV</option>
+            <option value="FRC">FRC</option>
+            <option value="CF">CF</option>
+            <option value="BKNG">BKNG</option>
+            <option value="CERN">CERN</option>
+            <option value="KO">KO</option>
+            <option value="CDN">CDN</option>
+            <option value="ED">ED</option>
+            <option value="XRAY">XRAY</option>
+        </select>
+        <br><br>
+
+        <body style="font-size:large;">
+            Step3: Please enter start and end dates.
+        </body>
+
+        <body style="font-size:large;">
+            <p>Please enter the start data (Format: Year-Month-Day, e.g. 2000-01-01)</p>
+        </body>
+        Input Text:
+        <input type="text" name="start" required><br><br>
+
+        <body style="font-size:large;">
+            <p>Please enter the end data (Format: Year-Month-Day, e.g. 2020-01-01)</p>
+        </body>
+        Input Text:
+        <input type="text" name="end" required><br><br>
+
+
+        {{data_external}}<br><br>
+        {{data1}}
+        <br><br>
+
+        <input type="submit" value="Execute External Script">
+    </form>
+</body>
+
+</html>
