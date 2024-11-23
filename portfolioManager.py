@@ -15,15 +15,32 @@ class PortfolioManager:
 
     def create_tables(self):
         with self.conn:
+            '''
+            Input data: read from csv file.
+            1. transactions: date, ticker, source, cost, quantity
+            2. daily_cash: date, cash_balance
+            '''
             self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     date TEXT,
                     ticker TEXT,
+                    source TEXT,
                     cost REAL,
-                    quantity INTEGER,
-                    PRIMARY KEY (date, ticker)
+                    quantity REAL,
+                    PRIMARY KEY (date, ticker, source)
                 )
             """)
+            self.conn.execute("""
+                CREATE TABLE IF NOT EXISTS daily_cash (
+                    date TEXT PRIMARY KEY,
+                    cash_balance REAL
+                )
+            """)
+
+            '''
+            Fetch data: read from Yahoo Finance.
+            1. daily_prices: date, ticker, price
+            '''
             self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS daily_prices (
                     date TEXT,
@@ -32,53 +49,63 @@ class PortfolioManager:
                     PRIMARY KEY (date, ticker)
                 )
             """)
+
+            '''
+            Output data: calculate cost_basis, total_quantity and store them.
+            1. stock_data: date, ticker, cost_basis, total_quantity
+            2. gains: date, realized_gain, unrealized_gain
+            '''
             self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS stock_data (
                     date TEXT,
                     ticker TEXT,
                     cost_basis REAL,
-                    total_quantity INTEGER,
+                    total_quantity REAL,
                     PRIMARY KEY (date, ticker)
                 )
             """)
             self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS daily_cash (
-                date TEXT PRIMARY KEY,
-                cash_balance REAL
+            CREATE TABLE IF NOT EXISTS gains (
+                    date TEXT,
+                    realized_gain REAL,
+                    unrealized_gain REAL,
+                    PRIMARY KEY (date)
                 )
             """)
 
-    def add_transaction(self, date, ticker, cost, quantity):
+    def add_transaction(self, date, ticker, cost, quantity, source):
         # 检查是否已经存在相同的记录
         existing = self.conn.execute("""
-            SELECT 1 FROM transactions WHERE date = ? AND ticker = ?
-        """, (date, ticker)).fetchone()
+            SELECT 1 FROM transactions WHERE date = ? AND ticker = ? AND source = ?
+        """, (date, ticker, source)).fetchone()
 
         if existing:
             # print(f"Transaction for {ticker} on {date} already exists. Skipping insertion.")
             return
 
         # 计算成本基础
-        per_unit_cost = round(cost / quantity, 8) if quantity != 0 else 0
+        # per_unit_cost = round(cost / quantity, 8) if quantity != 0 else 0
         row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1",
                                 (ticker, date)).fetchone()
-
+        
+        current_cost_basis, current_quantity = 0, 0 # 默认值
         if row:
             current_cost_basis, current_quantity = row
-            total_cost = round(current_cost_basis * current_quantity + cost, 8)
-            new_quantity = current_quantity + quantity
-            new_cost_basis = round(total_cost / new_quantity, 8) if new_quantity != 0 else 0
-        else:
-            new_cost_basis = per_unit_cost
-            new_quantity = quantity
+
+        total_cost = round(current_cost_basis * current_quantity + cost, 8)
+        new_quantity = current_quantity + quantity
+        new_cost_basis = round(total_cost / new_quantity, 8) if new_quantity != 0 else 0
+        # else:
+        #     new_cost_basis = per_unit_cost
+        #     new_quantity = quantity
 
         # 插入新交易记录
         with self.conn:
-            self.conn.execute("INSERT INTO transactions (date, ticker, cost, quantity) VALUES (?, ?, ?, ?)",
-                              (date, ticker, cost, quantity))
+            self.conn.execute("INSERT INTO transactions (date, ticker, source, cost, quantity) VALUES (?, ?, ?, ?, ?)",
+                              (date, ticker, source, cost, quantity))
             self.conn.execute("INSERT OR REPLACE INTO stock_data (date, ticker, cost_basis, total_quantity) VALUES (?, ?, ?, ?)",
                               (date, ticker, new_cost_basis, new_quantity))
-            self.update_future_cost_basis_and_quantity(date, ticker)
+            self.update_future_cost_basis_and_quantity(date, ticker, cost, quantity)
 
         # 获取并存储当天价格
         # previous_date = self.get_previous_date(date)
@@ -97,30 +124,59 @@ class PortfolioManager:
             """, (date, cash_balance))
         # print(f"Cash balance for {date} set to {cash_balance}.")
 
-
-    def update_future_cost_basis_and_quantity(self, date, ticker):
+    def update_future_cost_basis_and_quantity(self, trans_date, ticker, trans_cost, trans_quantity):
+        '''
+        Update future cost_basis and total_quantity on stock_data after a transaction. 
+        '''
         future_dates = self.conn.execute("SELECT date FROM stock_data WHERE ticker = ? AND date > ? ORDER BY date ASC",
-                                         (ticker, date)).fetchall()
+                                         (ticker, trans_date)).fetchall()
 
-        row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date = ?",
-                                (ticker, date)).fetchone()
-        if not row:
-            return
-
-        cost_basis, quantity = row
+        # row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date = ?",
+        #                         (ticker, date)).fetchone()
+        # if not row:
+        #     return
+        # cost_basis, quantity = row
 
         for future_date in future_dates:
             future_date = future_date[0]
-            trans_rows = self.conn.execute("SELECT cost, quantity FROM transactions WHERE date = ? AND ticker = ?",
-                                           (future_date, ticker)).fetchall()
 
-            for trans_cost, trans_quantity in trans_rows:
-                total_cost = round(cost_basis * quantity + trans_cost, 8)
-                quantity += trans_quantity
-                cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
+            row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date = ?",
+                                    (ticker, future_date)).fetchone()
+            if not row:
+                return
+            cost_basis, quantity = row
+
+            total_cost = round(cost_basis * quantity + trans_cost, 8)
+            quantity += trans_quantity
+            cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
 
             self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
                               (cost_basis, quantity, future_date, ticker))
+
+
+    # def update_future_cost_basis_and_quantity(self, date, ticker):
+    #     future_dates = self.conn.execute("SELECT date FROM stock_data WHERE ticker = ? AND date > ? ORDER BY date ASC",
+    #                                      (ticker, date)).fetchall()
+
+    #     row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date = ?",
+    #                             (ticker, date)).fetchone()
+    #     if not row:
+    #         return
+
+    #     cost_basis, quantity = row
+
+    #     for future_date in future_dates:
+    #         future_date = future_date[0]
+    #         trans_rows = self.conn.execute("SELECT cost, quantity FROM transactions WHERE date = ? AND ticker = ?",
+    #                                        (future_date, ticker)).fetchall()
+
+    #         for trans_cost, trans_quantity in trans_rows:
+    #             total_cost = round(cost_basis * quantity + trans_cost, 8)
+    #             quantity += trans_quantity
+    #             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
+
+    #         self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
+    #                           (cost_basis, quantity, future_date, ticker))
 
     def get_previous_date(self, date_str):
         date = datetime.strptime(date_str, "%Y-%m-%d")
@@ -427,6 +483,8 @@ class PortfolioManager:
         从 CSV 文件加载交易记录，并将同一天的交易合并。
         """
         transactions = {}
+        source = os.path.splitext(os.path.basename(file_path))[0]
+        print(source)
 
         # 读取 CSV 文件并合并同一天的交易
         with open(file_path, newline='') as csvfile:
@@ -435,7 +493,7 @@ class PortfolioManager:
                 date, ticker, cost, quantity = row
                 cost = float(cost)
                 quantity = float(quantity)
-                key = (date, ticker)  # 以 (日期, 股票代码) 作为唯一键
+                key = (date, ticker, source)  # 以 (日期, 股票代码) 作为唯一键
 
                 if key in transactions:
                     # 合并同一天的交易
@@ -445,8 +503,8 @@ class PortfolioManager:
                     transactions[key] = {'cost': cost, 'quantity': quantity}
 
         # 插入合并后的交易
-        for (date, ticker), data in transactions.items():
-            self.add_transaction(date, ticker, data['cost'], data['quantity'])
+        for (date, ticker, source), data in transactions.items():
+            self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
 
         print(f"All transactions from {file_path} have been loaded with daily aggregation.")
 

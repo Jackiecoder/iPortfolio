@@ -8,3 +8,4 @@ services:
       - .:/app
     environment:
       - NAME=World
+    command: tail -f /dev/null
