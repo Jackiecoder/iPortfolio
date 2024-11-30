@@ -12,7 +12,7 @@ class DatabaseViewer:
             cursor = self.conn.execute("SELECT * FROM transactions ORDER BY date DESC")
             transactions = cursor.fetchall()
             print("\nTransactions (sorted by date, descending):")
-            print(tabulate(transactions, headers=["Date", "Ticker", "Cost", "Quantity"], tablefmt="pretty"))
+            print(tabulate(transactions, headers=["Date", "Ticker", "Source", "Cost", "Quantity"], tablefmt="pretty"))
 
     def view_daily_prices(self):
         """查看 daily_prices 表的数据"""
@@ -37,6 +37,13 @@ class DatabaseViewer:
             daily_cash = cursor.fetchall()
             print("\nDaily Cash:")
             print(tabulate(daily_cash, headers=["Date", "Cash Balance"], tablefmt="pretty"))
+
+    def view_realized_gain(self):
+        with self.conn:
+            cursor = self.conn.execute("SELECT * FROM realized_gains ORDER BY date DESC")
+            realized_gain = cursor.fetchall()
+            print("\nRealized Gain:")
+            print(tabulate(realized_gain, headers=["Date", "Ticker", "Gain"], tablefmt="pretty"))
 
     def close(self):
         """关闭数据库连接"""

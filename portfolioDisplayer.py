@@ -72,6 +72,21 @@ class Displayer:
 
         return overall_annualized_return
 
+    def get_realized_gain(self, ticker, date):
+        # if ticker not exist 
+        ticker_exists = self.conn.execute("""
+        SELECT 1 FROM realized_gains WHERE ticker = ?
+        """, (ticker,)).fetchone()
+
+        if not ticker_exists:
+            return 0
+
+        query = """
+        SELECT SUM(gain) FROM realized_gains 
+        WHERE ticker = ? AND date <= ?
+        """
+        result = self.conn.execute(query, (ticker, date)).fetchone()
+        return result[0] if result[0] is not None else 0
 
     def fetch_and_store_price(self, ticker, date):
         """
@@ -314,22 +329,22 @@ class Displayer:
     def calculate_rate_of_return_v2(self):
         tickers = self.get_all_tickers()
         ror_data = []
-        total_cost, total_value = 0, 0
+        total_cost, total_value, total_unrealized_gain, total_realized_gain, total_profit = 0, 0, 0, 0, 0
 
         for ticker in tickers:
             latest_quantity_ticker = self.get_latest_stock_quantity(ticker)
             todays_price = self.fetch_and_store_latest_price(ticker)
-            latest_cash = self.get_latest_cash()
-
-            total_value_ticker = latest_quantity_ticker * todays_price 
             cost_basis = self.get_cost_basis(ticker)
+            total_value_ticker = latest_quantity_ticker * todays_price
             total_cost_ticker = cost_basis * latest_quantity_ticker
 
-            profit = total_value_ticker - total_cost_ticker
-            rate_of_return = ((total_value_ticker / total_cost_ticker) - 1 ) * 100 if total_cost_ticker > 0 else None
+            unrealized_gain = total_value_ticker - total_cost_ticker
+            last_date = datetime.now().strftime("%Y-%m-%d")
+            realized_gain = self.get_realized_gain(ticker, last_date)
+            profit = unrealized_gain + realized_gain
+            rate_of_return = ((total_value_ticker / total_cost_ticker) - 1) * 100 if total_cost_ticker > 0 else None
 
             first_date, last_date = self.get_ticker_date_range(ticker)
-
             annualized_return = self.calculate_annualized_return(first_date, last_date, total_value_ticker, total_cost_ticker)
 
             ror_data.append({
@@ -339,7 +354,9 @@ class Displayer:
                 "Total Holding": round(latest_quantity_ticker, 2),
                 "Total Value": round(total_value_ticker, 2),
                 "Total Cost": round(total_cost_ticker, 2),
-                "Profit": round(profit, 2),
+                "Unrealized Gain": round(unrealized_gain, 2),
+                "Realized Gain": round(realized_gain, 2),
+                "Total Profit": round(profit, 2),
                 "Rate of Return (%)": round(rate_of_return, 2),
                 "Portfolio (%)": None,  # 后续计算
                 "First Date": first_date,
@@ -350,6 +367,32 @@ class Displayer:
             # 累计总计数据
             total_cost += total_cost_ticker
             total_value += total_value_ticker
+            total_unrealized_gain += unrealized_gain
+            total_realized_gain += realized_gain
+            total_profit += profit
+
+        # Add cash to the total value
+        latest_cash = self.get_latest_cash()
+        total_value += latest_cash
+
+        # Add total row
+        # ror_data.append({
+        #     "Ticker": "Total",
+        #     "Latest Price": None,
+        #     "Ave Cost Basis": None,
+        #     "Total Holding": None,
+        #     "Total Value": round(total_value, 2),
+        #     "Total Cost": round(total_cost, 2),
+        #     "Unrealized Gain": round(total_unrealized_gain, 2),
+        #     "Realized Gain": round(total_realized_gain, 2),
+        #     "Total Profit": round(total_profit, 2),
+        #     "Rate of Return (%)": None,
+        #     "Portfolio (%)": None,
+        #     "First Date": None,
+        #     "Last Date": None,
+        #     "Annualized RoR (%)": None
+        # })
+
 
         # Overall Total value
         overall_first_date, overall_last_date = self.get_overall_date_range()
@@ -369,7 +412,9 @@ class Displayer:
             "Ave Cost Basis": None,
             "Total Value": round(latest_cash, 2),
             "Total Cost": None,
-            "Profit": None,
+            "Unrealized Gain": None,
+            "Realized Gain": None,
+            "Total Profit": None,
             "Rate of Return (%)": None,
             "Portfolio (%)": round((latest_cash / (total_value + latest_cash)) * 100, 2) if latest_cash > 0 else 0,
             "First Date": None,
@@ -384,7 +429,9 @@ class Displayer:
             "Total Holding": None,
             "Total Value": round(total_value, 2),
             "Total Cost": round(total_cost, 2),
-            "Profit": round(overall_profit, 2),
+            "Unrealized Gain": round(total_unrealized_gain, 2),
+            "Realized Gain": round(total_realized_gain, 2),
+            "Total Profit": round(total_profit, 2),
             "Rate of Return (%)": round(total_rate_of_return, 2),
             "Portfolio (%)": 100.0,  # 总计行为 100%
             "First Date": overall_first_date,
@@ -396,11 +443,11 @@ class Displayer:
         df = pd.DataFrame(ror_data)
 
         # 确保 Profit 列为浮点数，并填充空值
-        df["Profit"] = pd.to_numeric(df["Profit"], errors='coerce').fillna(0)
+        df["Total Profit"] = pd.to_numeric(df["Total Profit"], errors='coerce').fillna(0)
 
         # 按 Profit 降序排序，保留 "Total" 行在最后
         sorted_df = pd.concat([
-            df[df["Ticker"] != "Total (w/o Cash)"].sort_values(by="Profit", ascending=False),
+            df[df["Ticker"] != "Total (w/o Cash)"].sort_values(by="Total Profit", ascending=False),
             df[df["Ticker"] == "Total (w/o Cash)"]
         ], ignore_index=True)
 

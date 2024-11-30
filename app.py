@@ -17,8 +17,9 @@ def view_database():
     viewer = DatabaseViewer()
     # viewer.view_transactions()    # 查看所有交易记录，包括 cost_basis 和 total_quantity 列
     viewer.view_stock_data()      # 查看当前股票数据
-    viewer.view_daily_cash()
+    # viewer.view_daily_cash()
     # viewer.view_daily_prices()
+    viewer.view_realized_gain()
     viewer.close()
 
 def draw_chart():
@@ -46,14 +47,17 @@ def clear_table():
     portfolio.clear_table("stock_data")
     # clear daily_cash table
     portfolio.clear_table("daily_cash")
+    # clear daily_prices table
+    portfolio.clear_table("realized_gains")
 
 def main():
     print("Welcome to Portfolio Manager!")
+    # clear_table()
     # load_transactions()
     # view_database()
-    # draw_chart()
+    draw_chart()
     display_portfolio()
-    # clear_table()
+    
 
 if __name__ == "__main__":
     main()

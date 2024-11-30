@@ -144,10 +144,28 @@ class ChartDrawer:
 
             total_values.append(total_value)
             total_costs.append(total_cost)
+        
+
+        file_name = ("results/portfolio_line_chart_YTD.png", \
+                     "results/portfolio_line_chart_1M.png", \
+                     "results/portfolio_line_chart_3M.png", \
+                     "results/portfolio_line_chart_6M.png")
+        today = datetime.now()
+        start_date =  (datetime(2024, 1, 1), \
+                        today - timedelta(days=30), \
+                        today - timedelta(days=90), \
+                        today - timedelta(days=180))
+        for i in range(3):
+            self.plot_asset_value_vs_cost_util(total_values, total_costs, dates, file_name[i], start_date[i])
+        # self.plot_asset_value_vs_cost_util(total_values, total_costs, file_name, date)
+
+    def plot_asset_value_vs_cost_util(self, total_values, total_costs, dates, \
+                                        file_name="results/portfolio_line_chart.png", \
+                                        start_date=datetime(2024, 1, 1)):
 
         # 转换日期为 datetime 对象
         dates = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
-        filtered_data = [(d, v, c) for d, v, c in zip(dates, total_values, total_costs) if d >= datetime(2024, 1, 1)]
+        filtered_data = [(d, v, c) for d, v, c in zip(dates, total_values, total_costs) if d >= start_date]
 
         if not filtered_data:
             print("No data available from 2024-01-01 onwards.")
@@ -165,6 +183,26 @@ class ChartDrawer:
                 plt.text(x, y_value, f"{y_value:.2f}", fontsize=8, ha='center', va='bottom', color='green')  # 标注总资产值
                 plt.text(x, y_cost, f"{y_cost:.2f}", fontsize=8, ha='center',  va='top', color='blue')    # 标注总成本
 
+        # Always show the value of the last data point
+        last_date = dates[-1]
+        last_value = total_values[-1]
+        last_cost = total_costs[-1]
+        plt.text(last_date, last_value, f"{last_value:.2f}", fontsize=10, ha='center', va='bottom', color='red', fontweight='bold')
+        plt.text(last_date, last_cost, f"{last_cost:.2f}", fontsize=10, ha='center', va='top', color='red', fontweight='bold')
+
+        # Calculate and show percentage of profit increase
+        start_value = total_values[0]
+        start_cost = total_costs[0]
+        start_profit = start_value - start_cost
+        end_profit = last_value - last_cost
+        profit_increase_percentage = ((end_profit - start_profit) / start_profit) * 100 if start_profit != 0 else 0
+
+        # profit_text = f"Profit Increase: {profit_increase_percentage:.2f}%"
+        # plt.text(last_date, last_value, profit_text, fontsize=10, ha='center', va='top', color='purple', fontweight='bold')
+        plt.text(dates[0], total_values[0], f"Profit: {start_profit:.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
+        plt.text(last_date, last_value, f"Profit: {end_profit:.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
+
+
         # 设置 x 轴为日期格式
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
         plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
@@ -175,6 +213,10 @@ class ChartDrawer:
         plt.ylabel("Value")
         plt.title("Portfolio Asset Value vs Total Cost Over Time")
         plt.legend()
+
+        # Show percentage of profit increase under the legend
+        plt.text(0.5, -0.1, f"Profit Increase: {profit_increase_percentage:.2f}%", fontsize=12, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
+
         plt.xticks(rotation=45)
         plt.tight_layout()
         plt.savefig(file_name)

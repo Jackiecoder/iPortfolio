@@ -65,54 +65,113 @@ class PortfolioManager:
                 )
             """)
             self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS gains (
-                    date TEXT,
-                    realized_gain REAL,
-                    unrealized_gain REAL,
-                    PRIMARY KEY (date)
+            CREATE TABLE IF NOT EXISTS realized_gains (
+                date TEXT,
+                ticker TEXT,
+                gain REAL,
+                PRIMARY KEY (date, ticker)
                 )
             """)
 
     def add_transaction(self, date, ticker, cost, quantity, source):
-        # 检查是否已经存在相同的记录
+        # check if the transaction already exists
         existing = self.conn.execute("""
             SELECT 1 FROM transactions WHERE date = ? AND ticker = ? AND source = ?
         """, (date, ticker, source)).fetchone()
 
         if existing:
-            # print(f"Transaction for {ticker} on {date} already exists. Skipping insertion.")
-            return
+            # update the transaction if it already exists
+            date, ticker, source, total_cost_date, total_quantity_date = existing
+            total_cost_date += cost
+            total_quantity_date += quantity
+            self.conn.execute("""
+                UPDATE transactions
+                SET cost = ?, quantity = ?
+                WHERE date = ? AND ticker = ? AND source = ?
+            """, (total_cost_date, total_quantity_date, date, ticker, source))
+        else:
+            self.conn.execute("""
+                INSERT INTO transactions (date, ticker, cost, quantity, source)
+                VALUES (?, ?, ?, ?, ?)
+            """, (date, ticker, cost, quantity, source))
 
-        # 计算成本基础
-        # per_unit_cost = round(cost / quantity, 8) if quantity != 0 else 0
+        # Update realized gains if the transaction has a negative value
+        # cost > 0, quantity > 0: buy
+        # cost < 0, quantity < 0: sell
+        # cost < 0, quantity = 0: dividend
+        # For sell and dividend, update realized gains and change the quantity of stock_data only
+        if cost < 0:
+            # only update realized gains and the stock data holding
+            self.update_realized_gains(date, ticker, cost, quantity)
+            self.update_stock_data(date, ticker, 0, quantity)
+        else:
+            self.update_stock_data(date, ticker, cost, quantity)
+            self.update_future_cost_basis_and_quantity(date, ticker, cost, quantity)
+
+
+    def update_stock_data(self, date, ticker, cost_new, quantity_new):
+        # calculate cost_basis and total_quantity
+        # if cost <= 0, means dividend or sell, only quantity will be recalculated
+        #   quantity <= 0 
+        # if cost > 0, means buy, both cost_basis and quantity will be recalculated
+        #   quantity must > 0
+        if (cost_new <= 0 and quantity_new > 0) or (cost_new > 0 and quantity_new <= 0):
+            print("Invalid transaction")
+            return 
+
         row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1",
                                 (ticker, date)).fetchone()
         
-        current_cost_basis, current_quantity = 0, 0 # 默认值
+        cost_basis, quantity = 0, 0 # 默认值
         if row:
-            current_cost_basis, current_quantity = row
+            cost_basis, quantity = row
 
-        total_cost = round(current_cost_basis * current_quantity + cost, 8)
-        new_quantity = current_quantity + quantity
-        new_cost_basis = round(total_cost / new_quantity, 8) if new_quantity != 0 else 0
-        # else:
-        #     new_cost_basis = per_unit_cost
-        #     new_quantity = quantity
+        if cost_new > 0:
+            # calculate new total cost
+            total_cost = round(cost_basis * quantity + cost_new, 8)
+            # calculate new total quantity
+            quantity = quantity + quantity_new 
+            # calculate new cost basis
+            cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
+        else:
+            # only quantity will be recalculated
+            quantity = quantity + quantity_new 
 
-        # 插入新交易记录
-        with self.conn:
-            self.conn.execute("INSERT INTO transactions (date, ticker, source, cost, quantity) VALUES (?, ?, ?, ?, ?)",
-                              (date, ticker, source, cost, quantity))
-            self.conn.execute("INSERT OR REPLACE INTO stock_data (date, ticker, cost_basis, total_quantity) VALUES (?, ?, ?, ?)",
-                              (date, ticker, new_cost_basis, new_quantity))
-            self.update_future_cost_basis_and_quantity(date, ticker, cost, quantity)
+        self.conn.execute("INSERT OR REPLACE INTO stock_data (date, ticker, cost_basis, total_quantity) VALUES (?, ?, ?, ?)",
+                            (date, ticker, cost_basis, quantity))
 
-        # 获取并存储当天价格
-        # previous_date = self.get_previous_date(date)
-        # if self.is_past_date(previous_date):
-        #     self.fetch_price_without_dbwrite(ticker, previous_date, date)
-        # else:
-        #     print(f"Cannot fetch price for {ticker} on {previous_date} because it is a future date.")
+
+    def update_realized_gains(self, date, ticker, gain, quantity):
+        # Fetch the latest cost_basis from stock_data
+        cost_basis = self.conn.execute("""
+            SELECT cost_basis FROM stock_data 
+            WHERE ticker = ? AND date <= ? 
+            ORDER BY date DESC LIMIT 1
+        """, (ticker, date)).fetchone()
+
+        if not cost_basis:
+            print("No cost basis found for the stock")
+            return
+        
+        gain = abs(gain) - cost_basis[0] * abs(quantity)
+
+        existing = self.conn.execute("""
+            SELECT gain FROM realized_gains WHERE date = ? AND ticker = ?
+        """, (date, ticker)).fetchone()
+
+        if existing:
+            new_gain = existing[0] + gain
+            self.conn.execute("""
+                UPDATE realized_gains
+                SET gain = ?
+                WHERE date = ? AND ticker = ?
+            """, (new_gain, date, ticker))
+        else:
+            self.conn.execute("""
+                INSERT INTO realized_gains (date, ticker, gain)
+                VALUES (?, ?, ?)
+            """, (date, ticker, gain))
+
 
     def set_daily_cash(self, date, cash_balance):
         """
@@ -146,7 +205,6 @@ class PortfolioManager:
 
             self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
                               (cost_basis, quantity, future_date, ticker))
-
 
     # def update_future_cost_basis_and_quantity(self, date, ticker):
     #     future_dates = self.conn.execute("SELECT date FROM stock_data WHERE ticker = ? AND date > ? ORDER BY date ASC",
@@ -339,7 +397,8 @@ class PortfolioManager:
                     transactions[key] = {'cost': cost, 'quantity': quantity}
 
         # 插入合并后的交易
-        for (date, ticker, source), data in transactions.items():
+        for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
+            print(date, ticker, data['cost'], data['quantity'], source)
             self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
 
         print(f"All transactions from {file_path} have been loaded with daily aggregation.")
