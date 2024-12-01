@@ -103,7 +103,7 @@ class ChartDrawer:
         plt.savefig(file_name)
         plt.show()
 
-    def plot_asset_value_vs_cost(self, file_name = "results/portfolio_line_chart.png"):
+    def plot_asset_value_vs_cost(self, file_path):
         dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
@@ -146,10 +146,10 @@ class ChartDrawer:
             total_costs.append(total_cost)
         
 
-        file_name = ("results/portfolio_line_chart_YTD.png", \
-                     "results/portfolio_line_chart_1M.png", \
-                     "results/portfolio_line_chart_3M.png", \
-                     "results/portfolio_line_chart_6M.png")
+        file_name = (f"{file_path}/portfolio_line_chart_YTD.png", \
+                     f"{file_path}/portfolio_line_chart_1M.png", \
+                     f"{file_path}/portfolio_line_chart_3M.png", \
+                     f"{file_path}/portfolio_line_chart_6M.png")
         today = datetime.now()
         start_date =  (datetime(2024, 1, 1), \
                         today - timedelta(days=30), \

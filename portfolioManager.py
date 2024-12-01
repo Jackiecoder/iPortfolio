@@ -76,9 +76,9 @@ class PortfolioManager:
     def add_transaction(self, date, ticker, cost, quantity, source):
         # check if the transaction already exists
         existing = self.conn.execute("""
-            SELECT 1 FROM transactions WHERE date = ? AND ticker = ? AND source = ?
+            SELECT * FROM transactions WHERE date = ? AND ticker = ? AND source = ?
         """, (date, ticker, source)).fetchone()
-
+        
         if existing:
             # update the transaction if it already exists
             date, ticker, source, total_cost_date, total_quantity_date = existing
@@ -378,7 +378,6 @@ class PortfolioManager:
         """
         transactions = {}
         source = os.path.splitext(os.path.basename(file_path))[0]
-        print(source)
 
         # 读取 CSV 文件并合并同一天的交易
         with open(file_path, newline='') as csvfile:
@@ -427,7 +426,8 @@ class PortfolioManager:
 
         # 遍历文件夹中的所有 CSV 文件
         for file_name in os.listdir(folder_path):
-            if file_name.endswith('.csv'):
+            if file_name.endswith('.csv') and file_name != 'demo_msft.csv':
+                print(file_name)
                 file_path = os.path.join(folder_path, file_name)
                 print(f"Loading transactions from file: {file_path}")
                 self.load_transactions_from_csv(file_path)

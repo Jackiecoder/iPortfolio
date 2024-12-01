@@ -1,10 +1,46 @@
 from tabulate import tabulate  # 用于表格格式化显示
 import sqlite3
+import pandas as pd
 
 class DatabaseViewer:
     def __init__(self, db_name="portfolio.db"):
         # 初始化 SQLite 数据库连接
         self.conn = sqlite3.connect(db_name)
+
+    def fetch_data(self, query):
+        df = pd.read_sql_query(query, self.conn)
+        return df
+
+    def save_tabulate_to_csv(self, query, keys, filename):
+        df = self.fetch_data(query)
+        table = tabulate(df, headers=keys, tablefmt='pretty')
+        with open(filename, 'w') as f:
+            f.write(table)
+
+    def save_transactions_to_csv(self, filename):
+        query = "SELECT * FROM transactions ORDER BY date DESC"
+        keys = ["Date", "Ticker", "Source", "Cost", "Quantity"]
+        self.save_tabulate_to_csv(query, keys, filename)
+
+    def save_stock_data_to_csv(self, filename):
+        query = "SELECT * FROM stock_data ORDER BY date DESC"
+        keys = ["Date", "Ticker", "Cost Basis", "Total Quantity"]
+        self.save_tabulate_to_csv(query, keys, filename)    
+
+    def save_daily_cash_to_csv(self, filename):
+        query = "SELECT * FROM daily_cash ORDER BY date DESC"
+        keys = ["Date", "Cash Balance"]
+        self.save_tabulate_to_csv(query, keys, filename)
+
+    def save_daily_prices_to_csv(self, filename):
+        query = "SELECT * FROM daily_prices ORDER BY date DESC"
+        keys = ["Date", "Ticker", "Price"]
+        self.save_tabulate_to_csv(query, keys, filename)
+
+    def save_realized_gain_to_csv(self, filename):
+        query = "SELECT * FROM realized_gains ORDER BY date DESC"
+        keys = ["Date", "Ticker", "Gain"]
+        self.save_tabulate_to_csv(query, keys, filename)
 
     def view_transactions(self):
         """按日期降序查看交易记录表的数据"""

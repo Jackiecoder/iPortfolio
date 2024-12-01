@@ -5,3 +5,5 @@ transactions
 results
 text.txt
 .DS_Store
+*.png
+!transactions/demo_msft.csv

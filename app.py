@@ -4,34 +4,39 @@ from databaseViewer import DatabaseViewer
 from portfolioChartDrawer import ChartDrawer
 from portfolioDisplayer import Displayer
 
-LOCAL_PATH = "results/"
+# input data    
+TRANSACTIONS_PATH = "transactions/"
+CASH_PATH = "transactions/cash/cash.csv"
+
+# output data
 ROR_TABLE_PATH = "results/ror_table/"
 CHART_PATH = "results/charts/"
+DBVIEWER_PATH = "results/dbviewer/"
 
 def load_transactions():
+    clear_table()
     pm = PortfolioManager()
-    transactions_folder = "transactions/"
-    pm.load_transactions_from_folder(transactions_folder)
-    pm.load_daily_cash_from_csv("transactions/cash/cash.csv")
+    pm.load_transactions_from_folder(TRANSACTIONS_PATH)
+    pm.load_daily_cash_from_csv(CASH_PATH)
     pm.close()
 
 def view_database():
     viewer = DatabaseViewer()
-    # viewer.view_transactions()    # 查看所有交易记录，包括 cost_basis 和 total_quantity 列
-    # viewer.view_stock_data()      # 查看当前股票数据
-    # viewer.view_daily_cash()
-    viewer.view_daily_prices()
-    # viewer.view_realized_gain()
+    viewer.save_transactions_to_csv(f"{DBVIEWER_PATH}transactions.csv")
+    viewer.save_stock_data_to_csv(f"{DBVIEWER_PATH}stock_data.csv")
+    viewer.save_daily_cash_to_csv(f"{DBVIEWER_PATH}daily_cash.csv")
+    viewer.save_daily_prices_to_csv(f"{DBVIEWER_PATH}daily_prices.csv")
+    viewer.save_realized_gain_to_csv(f"{DBVIEWER_PATH}realized_gains.csv")
     viewer.close()
 
 def draw_chart():
     cd = ChartDrawer()
-    cd.plot_pie_chart_with_cash()
-    cd.plot_asset_value_vs_cost()
+    cd.plot_pie_chart_with_cash(CHART_PATH+"portfolio_pie_chart.png")
+    cd.plot_asset_value_vs_cost(CHART_PATH)
 
 def display_portfolio():
     pd = Displayer()
-    yyyy_mm_dd = [ ("2024", "11", "30"), ("2024", "11", "01"), ("2024", "10", "01"), ("2024", "09", "01"), ("2024", "08", "01")]
+    yyyy_mm_dd = [ ("2024", "11", "15")]
     for yyyy, mm, dd in yyyy_mm_dd:
         print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
         ror_df, summary_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
@@ -60,9 +65,8 @@ def clear_table():
 
 def main():
     print("Welcome to Portfolio Manager!")
-    # clear_table()
     # load_transactions()
-    # view_database()
+    view_database()
     # draw_chart()
     display_portfolio()
     
