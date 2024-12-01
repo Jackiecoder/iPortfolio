@@ -3,54 +3,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
+from portfolioDisplayer_util import PortfolioDisplayerUtil
 
-class Displayer:
+class Displayer(PortfolioDisplayerUtil):
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
-
-    def get_latest_cash(self):
-        query = "SELECT cash_balance FROM daily_cash ORDER BY date DESC LIMIT 1"
-        result = self.conn.execute(query).fetchone()
-        return result[0] if result else 0
-
-
-    def get_latest_stock_quantity(self, ticker):
-        query = "SELECT total_quantity FROM stock_data WHERE ticker = ? ORDER BY date DESC LIMIT 1"
-        result = self.conn.execute(query, (ticker,)).fetchone()
-        return result[0] if result else 0
-
-    def get_all_tickers(self):
-        query = "SELECT DISTINCT ticker FROM stock_data"
-        result = self.conn.execute(query).fetchall()
-        return [row[0] for row in result]
-
-    def get_cost_basis(self, ticker):
-        query = "SELECT cost_basis FROM stock_data WHERE ticker = ? ORDER BY date DESC LIMIT 1"
-        result = self.conn.execute(query, (ticker,)).fetchone()
-        return result[0] if result else 0
-
-    def get_ticker_date_range(self, ticker):
-        date_range = self.conn.execute("""
-            SELECT MIN(date), MAX(date) FROM stock_data WHERE ticker = ?
-        """, (ticker,)).fetchone()
-        first_date = date_range[0] if date_range and date_range[0] else None
-        last_date = date_range[1] if date_range and date_range[1] else None
-
-        # convert into YYYY-MM-DD
-        first_date = first_date[:10] if first_date else None
-        last_date = last_date[:10] if last_date else None
-
-        return first_date, last_date
-
-    def get_overall_date_range(self):
-        # 获取所有 tickers 的最早和最晚日期
-        overall_date_range = self.conn.execute("""
-            SELECT MIN(date), MAX(date) FROM stock_data
-        """).fetchone()
-        overall_first_date = overall_date_range[0][:10] if overall_date_range and overall_date_range[0] else None
-        overall_last_date = overall_date_range[1][:10] if overall_date_range and overall_date_range[1] else None
-
-        return overall_first_date, overall_last_date
 
     def calculate_annualized_return(self, start_date, end_date, value, cost):
         duration_years = max((datetime.strptime(end_date, "%Y-%m-%d") \
@@ -61,73 +18,6 @@ class Displayer:
             annualized_return = None
 
         return annualized_return
-
-    def calculate_overall_annualized_return(self, start_date, end_date, value, cost):
-        duration_years = max((datetime.strptime(end_date, "%Y-%m-%d") \
-                            - datetime.strptime(start_date, "%Y-%m-%d")).days / 365.25, 1)
-        if duration_years >= 1 and cost > 0:
-            overall_annualized_return = ((value / cost) ** (1 / duration_years) - 1) * 100
-        else:
-            overall_annualized_return = None
-
-        return overall_annualized_return
-
-    def get_realized_gain(self, ticker, date):
-        # if ticker not exist 
-        ticker_exists = self.conn.execute("""
-        SELECT 1 FROM realized_gains WHERE ticker = ?
-        """, (ticker,)).fetchone()
-
-        if not ticker_exists:
-            return 0
-
-        query = """
-        SELECT SUM(gain) FROM realized_gains 
-        WHERE ticker = ? AND date <= ?
-        """
-        result = self.conn.execute(query, (ticker, date)).fetchone()
-        return result[0] if result[0] is not None else 0
-
-    def fetch_and_store_price(self, ticker, date):
-        """
-        从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
-        """
-        try:
-            date_obj = datetime.strptime(date, "%Y-%m-%d")
-            start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-            end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
-
-            history = yf.download(ticker, start_date, end_date)
-            if not history.empty:
-                price_series = history['Close']
-                price = list(round(price_series.iloc[-1], 8))[0]
-                with self.conn:
-                    self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
-                                      (date, ticker, price))
-                print(f"Fetched and stored price for {ticker} on {date}: {price}")
-                return price
-            print(f"No price data found for {ticker} on {date}")
-            return None
-
-        except Exception as e:
-            print(f"Error fetching price for {ticker} on {date}: {e}")
-            return None
-
-
-    def fetch_and_store_latest_price(self, ticker):
-        today = datetime.now().strftime("%Y-%m-%d")
-
-        # 检查是否已有最新价格
-        existing_price = self.conn.execute("""
-            SELECT price FROM daily_prices WHERE date = ? AND ticker = ?
-        """, (today, ticker)).fetchone()
-
-        if existing_price:
-            print(f"Price for {ticker} on {today} already exists: {existing_price[0]}")
-            return existing_price[0]
-
-        return self.fetch_and_store_price(ticker, today)
-
 
     def calculate_rate_of_return(self):
         """
@@ -326,32 +216,37 @@ class Displayer:
         return sorted_df, summary_df
 
 
-    def calculate_rate_of_return_v2(self):
+    def calculate_rate_of_return_v2(self, date):
         tickers = self.get_all_tickers()
         ror_data = []
         total_cost, total_value, total_unrealized_gain, total_realized_gain, total_profit = 0, 0, 0, 0, 0
 
         for ticker in tickers:
-            latest_quantity_ticker = self.get_latest_stock_quantity(ticker)
-            todays_price = self.fetch_and_store_latest_price(ticker)
-            cost_basis = self.get_cost_basis(ticker)
-            total_value_ticker = latest_quantity_ticker * todays_price
-            total_cost_ticker = cost_basis * latest_quantity_ticker
+            quantity_ticker = self.get_stock_quantity(ticker=ticker, date=date)
+            todays_price = self.fetch_and_store_price(ticker=ticker, date=date)
+            cost_basis = self.get_cost_basis(ticker=ticker, date=date)
+            total_value_ticker = quantity_ticker * todays_price
+            total_cost_ticker = cost_basis * quantity_ticker
+
+            if quantity_ticker == 0:
+                # No holding yet, skip this ticker
+                continue
 
             unrealized_gain = total_value_ticker - total_cost_ticker
-            last_date = datetime.now().strftime("%Y-%m-%d")
-            realized_gain = self.get_realized_gain(ticker, last_date)
+            realized_gain = self.get_realized_gain(ticker, date=date)
+
             profit = unrealized_gain + realized_gain
             rate_of_return = ((total_value_ticker / total_cost_ticker) - 1) * 100 if total_cost_ticker > 0 else None
 
             first_date, last_date = self.get_ticker_date_range(ticker)
+            last_date = min(date, last_date) if last_date else date
             annualized_return = self.calculate_annualized_return(first_date, last_date, total_value_ticker, total_cost_ticker)
 
             ror_data.append({
                 "Ticker": ticker,
                 "Latest Price": round(todays_price, 2),
                 "Ave Cost Basis": round(cost_basis, 2),
-                "Total Holding": round(latest_quantity_ticker, 2),
+                "Total Holding": round(quantity_ticker, 2),
                 "Total Value": round(total_value_ticker, 2),
                 "Total Cost": round(total_cost_ticker, 2),
                 "Unrealized Gain": round(unrealized_gain, 2),
@@ -372,32 +267,12 @@ class Displayer:
             total_profit += profit
 
         # Add cash to the total value
-        latest_cash = self.get_latest_cash()
-        total_value += latest_cash
-
-        # Add total row
-        # ror_data.append({
-        #     "Ticker": "Total",
-        #     "Latest Price": None,
-        #     "Ave Cost Basis": None,
-        #     "Total Holding": None,
-        #     "Total Value": round(total_value, 2),
-        #     "Total Cost": round(total_cost, 2),
-        #     "Unrealized Gain": round(total_unrealized_gain, 2),
-        #     "Realized Gain": round(total_realized_gain, 2),
-        #     "Total Profit": round(total_profit, 2),
-        #     "Rate of Return (%)": None,
-        #     "Portfolio (%)": None,
-        #     "First Date": None,
-        #     "Last Date": None,
-        #     "Annualized RoR (%)": None
-        # })
-
+        latest_cash = self.get_cash(date=date)
 
         # Overall Total value
         overall_first_date, overall_last_date = self.get_overall_date_range()
-        overall_annualized_return = self.calculate_overall_annualized_return(overall_first_date, overall_last_date, total_value, total_cost)
-        overall_profit = total_value - total_cost
+        overall_last_date = min(date, overall_last_date) if overall_last_date else date
+        overall_annualized_return = self.calculate_annualized_return(overall_first_date, overall_last_date, total_value, total_cost)
         total_rate_of_return = ((total_value / total_cost) - 1) * 100 if total_cost > 0 else None
 
         # 添加 Portfolio (%) 列
@@ -452,7 +327,13 @@ class Displayer:
         ], ignore_index=True)
 
         # 简化版表格
-        summary_df = sorted_df[["Ticker", "Portfolio (%)", "Rate of Return (%)", "First Date", "Last Date", "Annualized RoR (%)"]]
+        summary_df = sorted_df[["Ticker", 
+                                "Portfolio (%)", 
+                                "Total Value",
+                                "Total Cost",
+                                "Total Profit",
+                                "Rate of Return (%)",
+                                "Annualized RoR (%)"]]
 
         # 按 Portfolio (%) 降序排序，保留 Total 行在最后
         summary_df = pd.concat([
@@ -463,7 +344,7 @@ class Displayer:
         return sorted_df, summary_df
         
 
-    def save_df_as_png(self, df, filename):
+    def save_df_as_png(self, df, filename, title=""):
         """
         将 DataFrame 保存为 PNG 文件。
 
@@ -480,15 +361,30 @@ class Displayer:
                           loc='center',
                           cellLoc='center')
 
+        # Set alternating row colors
+        for _, key in enumerate(table.get_celld().keys()):
+            cell = table.get_celld()[key]
+            if key[0] == 0:
+                cell.set_fontsize(12)
+                cell.set_text_props(weight='bold')
+            else:
+                cell.set_fontsize(10)
+                if key[0] % 2 == 0:
+                    cell.set_facecolor('#f0f0f0')
+                else:
+                    cell.set_facecolor('#ffffff')
+
         # 调整字体大小
         table.auto_set_font_size(False)
         table.set_fontsize(10)
         table.auto_set_column_width(col=list(range(len(df.columns))))
 
+        # Add title
+        plt.title(title, fontsize=16, weight='bold')    
+
         # 保存为 PNG
         plt.savefig(filename, bbox_inches='tight', dpi=300)
         plt.close(fig)
-
 
     def close(self):
         self.conn.close()

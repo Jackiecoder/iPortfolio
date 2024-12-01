@@ -175,7 +175,7 @@ class ChartDrawer:
 
         # 绘制线性图
         plt.figure(figsize=(12, 6))
-        plt.plot(dates, total_values, label="Total Asset Value (Including Cash)", linestyle='-')
+        plt.plot(dates, total_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
         plt.plot(dates, total_costs, label="Total Cost (Excluding Cash)", linestyle='-')
         # 在每个点上标注数值
         for i, (x, y_value, y_cost) in enumerate(zip(dates, total_values, total_costs)):

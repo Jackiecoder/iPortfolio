@@ -5,6 +5,8 @@ from portfolioChartDrawer import ChartDrawer
 from portfolioDisplayer import Displayer
 
 LOCAL_PATH = "results/"
+ROR_TABLE_PATH = "results/ror_table/"
+CHART_PATH = "results/charts/"
 
 def load_transactions():
     pm = PortfolioManager()
@@ -16,10 +18,10 @@ def load_transactions():
 def view_database():
     viewer = DatabaseViewer()
     # viewer.view_transactions()    # 查看所有交易记录，包括 cost_basis 和 total_quantity 列
-    viewer.view_stock_data()      # 查看当前股票数据
+    # viewer.view_stock_data()      # 查看当前股票数据
     # viewer.view_daily_cash()
-    # viewer.view_daily_prices()
-    viewer.view_realized_gain()
+    viewer.view_daily_prices()
+    # viewer.view_realized_gain()
     viewer.close()
 
 def draw_chart():
@@ -29,13 +31,19 @@ def draw_chart():
 
 def display_portfolio():
     pd = Displayer()
-    ror_df, summary_df = pd.calculate_rate_of_return_v2()
-    print("Generating rate of return chart...")
-    filename = "portfolio_rate_of_return.png"
-    pd.save_df_as_png(df = ror_df, filename=LOCAL_PATH + filename)
-    print("Generating portfolio summary...")
-    filename = "portfolio_summary.png"
-    pd.save_df_as_png(df = summary_df, filename=LOCAL_PATH + filename)
+    yyyy_mm_dd = [ ("2024", "11", "30"), ("2024", "11", "01"), ("2024", "10", "01"), ("2024", "09", "01"), ("2024", "08", "01")]
+    for yyyy, mm, dd in yyyy_mm_dd:
+        print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
+        ror_df, summary_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
+        print("Generating rate of return chart...")
+        pd.save_df_as_png(df = ror_df, 
+                          filename=ROR_TABLE_PATH + f"portfolio_rate_of_return_{yyyy}_{mm}_{dd}.png",
+                          title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
+        print("Generating portfolio summary...")
+        pd.save_df_as_png(df = summary_df, 
+                          filename=ROR_TABLE_PATH + f"portfolio_summary_{yyyy}_{mm}_{dd}.png",
+                          title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
+
     pd.close()
 
 def clear_table():
@@ -55,7 +63,7 @@ def main():
     # clear_table()
     # load_transactions()
     # view_database()
-    draw_chart()
+    # draw_chart()
     display_portfolio()
     
 
