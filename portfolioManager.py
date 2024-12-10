@@ -12,6 +12,8 @@ class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
+        self.stock_splits = self.load_stock_splits('stock_split.csv')
+
 
     def create_tables(self):
         with self.conn:
@@ -73,6 +75,25 @@ class PortfolioManager:
                 )
             """)
 
+    def load_stock_splits(self, file_path):
+        stock_splits = {}
+        with open(file_path, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                date, ticker, before_split, after_split = row
+                if ticker not in stock_splits:
+                    stock_splits[ticker] = []
+                stock_splits[ticker].append((date, float(before_split), float(after_split)))
+        return stock_splits
+
+    def adjust_quantity_for_splits(self, ticker, old_date, new_date, old_quantity, old_cost_basis):
+        if ticker in self.stock_splits:
+            for split_date, before_split, after_split in sorted(self.stock_splits[ticker]):
+                if (old_date == 0 or old_date < split_date) and new_date >= split_date:
+                    old_quantity *= (after_split / before_split)
+                    old_cost_basis /= (after_split / before_split)
+        return old_quantity, old_cost_basis
+
     def add_transaction(self, date, ticker, cost, quantity, source):
         # check if the transaction already exists
         existing = self.conn.execute("""
@@ -119,23 +140,34 @@ class PortfolioManager:
             print("Invalid transaction")
             return 
 
-        row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1",
+        row = self.conn.execute("SELECT cost_basis, total_quantity, date FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1",
                                 (ticker, date)).fetchone()
         
-        cost_basis, quantity = 0, 0 # 默认值
+        cost_basis, quantity, prev_date = 0, 0, 0 # 默认值
         if row:
-            cost_basis, quantity = row
+            cost_basis, quantity, prev_date = row
 
-        if cost_new > 0:
+        # Adjust quantity for splits
+        quantity, cost_basis = self.adjust_quantity_for_splits(ticker=ticker, 
+                                                   old_date=prev_date, 
+                                                   new_date=date, 
+                                                   old_quantity=quantity,
+                                                   old_cost_basis=cost_basis)
+        
+
+        if cost_new > 0: # buy 
             # calculate new total cost
             total_cost = round(cost_basis * quantity + cost_new, 8)
             # calculate new total quantity
             quantity = quantity + quantity_new 
             # calculate new cost basis
             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
-        else:
+        else:   # sell or dividend
             # only quantity will be recalculated
             quantity = quantity + quantity_new 
+
+        if quantity < 0.00001:
+            quantity = 0
 
         self.conn.execute("INSERT OR REPLACE INTO stock_data (date, ticker, cost_basis, total_quantity) VALUES (?, ?, ?, ?)",
                             (date, ticker, cost_basis, quantity))

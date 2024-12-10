@@ -9,13 +9,11 @@ class ChartDrawer:
     def __init__(self, db_name="portfolio.db"):
       self.conn = sqlite3.connect(db_name)
 
-
     def fetch_and_store_price(self, ticker, date):
         """
         从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
         """
         try:
-            stock = yf.Ticker(ticker)
             date_obj = datetime.strptime(date, "%Y-%m-%d")
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
             end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -36,7 +34,6 @@ class ChartDrawer:
             print(f"Error fetching price for {ticker} on {date}: {e}")
             return None
 
-
     def fetch_and_store_latest_price(self, ticker):
         today = datetime.now().strftime("%Y-%m-%d")
 
@@ -50,7 +47,6 @@ class ChartDrawer:
             return existing_price[0]
 
         return self.fetch_and_store_price(ticker, today)
-
 
     def plot_pie_chart_with_cash(self, file_name="results/portfolio_pie_chart.png"):
         """

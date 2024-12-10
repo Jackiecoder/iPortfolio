@@ -3,9 +3,13 @@ from portfolioManager import PortfolioManager
 from databaseViewer import DatabaseViewer
 from portfolioChartDrawer import ChartDrawer
 from portfolioDisplayer import Displayer
+from tickerRORPlotter import TickerRORPlotter
+from portfolioDisplayer_util import PortfolioDisplayerUtil
 
 # input data    
 TRANSACTIONS_PATH = "transactions/"
+TRANSACTIONS_CATS = ["robinhood", "schwab", "ira", "fidelity", "crypto"]
+# TRANSACTIONS_CATS= ["robinhood"]
 CASH_PATH = "transactions/cash/cash.csv"
 
 # output data
@@ -16,7 +20,8 @@ DBVIEWER_PATH = "results/dbviewer/"
 def load_transactions():
     clear_table()
     pm = PortfolioManager()
-    pm.load_transactions_from_folder(TRANSACTIONS_PATH)
+    for cat in TRANSACTIONS_CATS:
+        pm.load_transactions_from_folder(TRANSACTIONS_PATH + cat + "/")
     pm.load_daily_cash_from_csv(CASH_PATH)
     pm.close()
 
@@ -34,19 +39,18 @@ def draw_chart():
     cd.plot_pie_chart_with_cash(CHART_PATH+"portfolio_pie_chart.png")
     cd.plot_asset_value_vs_cost(CHART_PATH)
 
-def display_portfolio():
+def display_portfolio(yyyy_mm_dd):
     pd = Displayer()
-    yyyy_mm_dd = [ ("2024", "11", "15")]
     for yyyy, mm, dd in yyyy_mm_dd:
         print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
         ror_df, summary_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
         print("Generating rate of return chart...")
         pd.save_df_as_png(df = ror_df, 
-                          filename=ROR_TABLE_PATH + f"portfolio_rate_of_return_{yyyy}_{mm}_{dd}.png",
+                          filename=ROR_TABLE_PATH + f"{yyyy}_{mm}_{dd}_portfolio_ror.png",
                           title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
         print("Generating portfolio summary...")
         pd.save_df_as_png(df = summary_df, 
-                          filename=ROR_TABLE_PATH + f"portfolio_summary_{yyyy}_{mm}_{dd}.png",
+                          filename=ROR_TABLE_PATH + f"{yyyy}_{mm}_{dd}_portfolio_summary.png",
                           title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
 
     pd.close()
@@ -63,13 +67,20 @@ def clear_table():
     # clear daily_prices table
     portfolio.clear_table("realized_gains")
 
+def display_ticker_ror():
+    ror_plotter = TickerRORPlotter()
+    ror_plotter.plot_all_tickers()
+
 def main():
     print("Welcome to Portfolio Manager!")
     # load_transactions()
-    view_database()
+    # view_database()
     # draw_chart()
-    display_portfolio()
+
+    yyyy_mm_dd = [ ("2024", "12", "10")]
+    display_portfolio(yyyy_mm_dd)
     
+    # display_ticker_ror()
 
 if __name__ == "__main__":
     main()

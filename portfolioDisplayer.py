@@ -223,6 +223,28 @@ class Displayer(PortfolioDisplayerUtil):
 
         for ticker in tickers:
             quantity_ticker = self.get_stock_quantity(ticker=ticker, date=date)
+            if quantity_ticker == 0:
+                realized_gain = self.get_realized_gain(ticker, date=date)
+                ror_data.append({
+                    "Ticker": ticker,
+                    "Latest Price": None,
+                    "Ave Cost Basis": None,
+                    "Total Holding": None,
+                    "Total Value": 0,
+                    "Total Cost": 0,
+                    "Unrealized Gain": 0,
+                    "Realized Gain": round(realized_gain, 2),
+                    "Total Profit": round(realized_gain, 2),
+                    "Rate of Return (%)": None,
+                    "Portfolio (%)": None,
+                    "First Date": None,
+                    "Last Date": None,
+                    "Annualized RoR (%)": None
+                })
+                total_realized_gain += realized_gain
+                total_profit += realized_gain
+                continue
+
             todays_price = self.fetch_and_store_price(ticker=ticker, date=date)
             cost_basis = self.get_cost_basis(ticker=ticker, date=date)
             total_value_ticker = quantity_ticker * todays_price
@@ -334,6 +356,17 @@ class Displayer(PortfolioDisplayerUtil):
                                 "Total Profit",
                                 "Rate of Return (%)",
                                 "Annualized RoR (%)"]]
+
+        # 合并 total_cost == 0 和 total_value == 0 的记录为一行 "Other"
+        other_df = summary_df[(summary_df["Total Cost"] == 0) & (summary_df["Total Value"] == 0)]
+        if not other_df.empty:
+            other_row = other_df.sum(numeric_only=True)
+            other_row["Ticker"] = "Other"
+            other_row["Rate of Return (%)"] = None
+            other_row["Portfolio (%)"] = None
+            other_row["Annualized RoR (%)"] = None
+            summary_df = summary_df[(summary_df["Total Cost"] != 0) | (summary_df["Total Value"] != 0)]
+            summary_df = pd.concat([summary_df, pd.DataFrame([other_row])], ignore_index=True)
 
         # 按 Portfolio (%) 降序排序，保留 Total 行在最后
         summary_df = pd.concat([
