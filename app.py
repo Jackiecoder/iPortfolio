@@ -1,7 +1,7 @@
-import yfinance as yf
+#!/usr/local/bin/python3 
 from portfolioManager import PortfolioManager
 from databaseViewer import DatabaseViewer
-from portfolioChartDrawer import ChartDrawer
+from portfolioPlotter import Plotter
 from portfolioDisplayer import Displayer
 from tickerRORPlotter import TickerRORPlotter
 from portfolioDisplayer_util import PortfolioDisplayerUtil
@@ -34,10 +34,10 @@ def view_database():
     viewer.save_realized_gain_to_csv(f"{DBVIEWER_PATH}realized_gains.csv")
     viewer.close()
 
-def draw_chart():
-    cd = ChartDrawer()
-    cd.plot_pie_chart_with_cash(CHART_PATH+"portfolio_pie_chart.png")
-    cd.plot_asset_value_vs_cost(CHART_PATH)
+def plot_chart():
+    pt = Plotter()
+    pt.plot_pie_chart_with_cash(CHART_PATH+"portfolio_pie_chart.png")
+    pt.plot_asset_value_vs_cost(CHART_PATH)
 
 def display_portfolio(yyyy_mm_dd):
     pd = Displayer()
@@ -75,10 +75,10 @@ def main():
     print("Welcome to Portfolio Manager!")
     # load_transactions()
     # view_database()
-    # draw_chart()
+    plot_chart()
 
-    yyyy_mm_dd = [ ("2024", "12", "10")]
-    display_portfolio(yyyy_mm_dd)
+    # yyyy_mm_dd = [ ("2024", "12", "12")]
+    # display_portfolio(yyyy_mm_dd)
     
     # display_ticker_ror()
 

@@ -3,9 +3,10 @@ import sqlite3
 import yfinance as yf
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
+from portfolioDisplayer_util import PortfolioDisplayerUtil
 
 
-class ChartDrawer:
+class Plotter:
     def __init__(self, db_name="portfolio.db"):
       self.conn = sqlite3.connect(db_name)
 
@@ -103,6 +104,8 @@ class ChartDrawer:
         dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
+        total_profits = []
+        pdu = PortfolioDisplayerUtil()
 
         # 获取所有出现过的ticker列表
         tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
@@ -132,7 +135,7 @@ class ChartDrawer:
                         price = price_row[0]
                     else:
                         # 如果表中没有数据，从 Yahoo Finance 下载价格
-                        price = self.fetch_and_store_price(ticker, date)
+                        price = pdu.fetch_and_store_price(ticker, date)
                         # # 获取价格信息
                         # price = self.fetch_price_without_dbwrite(ticker, date)
                     if price is not None and quantity is not None:
@@ -140,63 +143,75 @@ class ChartDrawer:
 
             total_values.append(total_value)
             total_costs.append(total_cost)
+            total_profits.append(total_value - total_cost)
         
 
-        file_name = (f"{file_path}/portfolio_line_chart_YTD.png", \
-                     f"{file_path}/portfolio_line_chart_1M.png", \
-                     f"{file_path}/portfolio_line_chart_3M.png", \
-                     f"{file_path}/portfolio_line_chart_6M.png")
+        file_name = [f"{file_path}/portfolio_line_chart_YTD.png", 
+                     f"{file_path}/portfolio_line_chart_1M.png", 
+                     f"{file_path}/portfolio_line_chart_3M.png", 
+                     f"{file_path}/portfolio_line_chart_6M.png",  
+                     f"{file_path}/portfolio_line_chart_3D.png",  
+                     f"{file_path}/portfolio_line_chart_1W.png"
+        ]
         today = datetime.now()
-        start_date =  (datetime(2024, 1, 1), \
-                        today - timedelta(days=30), \
-                        today - timedelta(days=90), \
-                        today - timedelta(days=180))
-        for i in range(3):
-            self.plot_asset_value_vs_cost_util(total_values, total_costs, dates, file_name[i], start_date[i])
+        start_date =  (datetime(2024, 1, 1), 
+                        today - timedelta(days=30), 
+                        today - timedelta(days=90), 
+                        today - timedelta(days=180),
+                        today - timedelta(days=3),
+                        today - timedelta(days=7)
+        )
+        for i in range(len(start_date)):
+            self.plot_asset_value_vs_cost_util(total_costs=total_costs, 
+                                               total_profits=total_profits, 
+                                               dates=dates,
+                                               file_name=file_name[i], 
+                                               start_date=start_date[i])
         # self.plot_asset_value_vs_cost_util(total_values, total_costs, file_name, date)
 
-    def plot_asset_value_vs_cost_util(self, total_values, total_costs, dates, \
+    def plot_asset_value_vs_cost_util(self, total_costs, total_profits, dates, \
                                         file_name="results/portfolio_line_chart.png", \
                                         start_date=datetime(2024, 1, 1)):
 
         # 转换日期为 datetime 对象
         dates = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
-        filtered_data = [(d, v, c) for d, v, c in zip(dates, total_values, total_costs) if d >= start_date]
+        latest_cost = total_costs[-1]
+        new_values = [profit + latest_cost for profit in total_profits]
+        filtered_data = [(d, v, c) for d, v, c in zip(dates, new_values, total_costs) if d >= start_date]
 
         if not filtered_data:
             print("No data available from 2024-01-01 onwards.")
             return
 
-        dates, total_values, total_costs = zip(*filtered_data)
+        dates, new_values, total_costs = zip(*filtered_data)
+        print(dates)
+
+        # Downsample data to at most 10 points
+        if len(dates) > 10:
+            step = len(dates) // 10
+            indices = list(range(0, len(dates), step))
+            if indices[-1] != len(dates) - 1:
+                indices.append(len(dates) - 1)
+            dates = [dates[i] for i in indices]
+            new_values = [new_values[i] for i in indices]
+            total_costs = [total_costs[i] for i in indices]
 
         # 绘制线性图
         plt.figure(figsize=(12, 6))
-        plt.plot(dates, total_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
-        plt.plot(dates, total_costs, label="Total Cost (Excluding Cash)", linestyle='-')
+        plt.plot(dates, new_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
         # 在每个点上标注数值
-        for i, (x, y_value, y_cost) in enumerate(zip(dates, total_values, total_costs)):
-            if i % 10 == 0:  # 每 10 个点标注一次
-                plt.text(x, y_value, f"{y_value:.2f}", fontsize=8, ha='center', va='bottom', color='green')  # 标注总资产值
-                plt.text(x, y_cost, f"{y_cost:.2f}", fontsize=8, ha='center',  va='top', color='blue')    # 标注总成本
+        for i, (x, y_value) in enumerate(zip(dates, new_values)):
+            # if i % 10 == 0 or i == 0:  # 每 10 个点标注一次
+            plt.text(x, y_value, f"{y_value:,.2f}", fontsize=10, ha='center', va='bottom', color='green')  # 标注总资产值
 
         # Always show the value of the last data point
         last_date = dates[-1]
-        last_value = total_values[-1]
-        last_cost = total_costs[-1]
-        plt.text(last_date, last_value, f"{last_value:.2f}", fontsize=10, ha='center', va='bottom', color='red', fontweight='bold')
-        plt.text(last_date, last_cost, f"{last_cost:.2f}", fontsize=10, ha='center', va='top', color='red', fontweight='bold')
+        last_value = new_values[-1]
+        # plt.text(last_date, last_value, f"{last_value:,.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
 
         # Calculate and show percentage of profit increase
-        start_value = total_values[0]
-        start_cost = total_costs[0]
-        start_profit = start_value - start_cost
-        end_profit = last_value - last_cost
-        profit_increase_percentage = ((end_profit - start_profit) / start_profit) * 100 if start_profit != 0 else 0
-
-        # profit_text = f"Profit Increase: {profit_increase_percentage:.2f}%"
-        # plt.text(last_date, last_value, profit_text, fontsize=10, ha='center', va='top', color='purple', fontweight='bold')
-        plt.text(dates[0], total_values[0], f"Profit: {start_profit:.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
-        plt.text(last_date, last_value, f"Profit: {end_profit:.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
+        start_value = new_values[0]
+        profit_increase_percentage = (last_value - start_value) / start_value * 100 if start_value != 0 else 0
 
 
         # 设置 x 轴为日期格式
@@ -211,7 +226,7 @@ class ChartDrawer:
         plt.legend()
 
         # Show percentage of profit increase under the legend
-        plt.text(0.5, -0.1, f"Profit Increase: {profit_increase_percentage:.2f}%", fontsize=12, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
+        plt.text(0.5, 0.8, f"Profit Increase: {round(last_value - start_value, 2):,} ({profit_increase_percentage:.2f}%)", fontsize=12, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
 
         plt.xticks(rotation=45)
         plt.tight_layout()

@@ -429,7 +429,6 @@ class PortfolioManager:
 
         # 插入合并后的交易
         for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
-            print(date, ticker, data['cost'], data['quantity'], source)
             self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
 
         print(f"All transactions from {file_path} have been loaded with daily aggregation.")
@@ -459,7 +458,6 @@ class PortfolioManager:
         # 遍历文件夹中的所有 CSV 文件
         for file_name in os.listdir(folder_path):
             if file_name.endswith('.csv') and file_name != 'demo_msft.csv':
-                print(file_name)
                 file_path = os.path.join(folder_path, file_name)
                 print(f"Loading transactions from file: {file_path}")
                 self.load_transactions_from_csv(file_path)
