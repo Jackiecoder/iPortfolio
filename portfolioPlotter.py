@@ -100,123 +100,80 @@ class Plotter:
         plt.savefig(file_name)
         plt.show()
 
-    def plot_asset_value_vs_cost(self, file_path):
-        dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
+    def plot_line_chart(self, file_name, time_period, number_of_points=15):
+        # dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
         total_profits = []
         pdu = PortfolioDisplayerUtil()
 
+        # calculate dates from ytd
+        if time_period == "YTD":
+            time_period = PortfolioDisplayerUtil.calculate_ytd_date_delta()
+
         # 获取所有出现过的ticker列表
         tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
 
-        for date in dates:
-            total_value = 0
-            total_cost = 0
-
-            for ticker in tickers:
-                # 获取当天或最近的有效 cost_basis 和 quantity
-                row = self.conn.execute("""
-                    SELECT cost_basis, total_quantity FROM stock_data
-                    WHERE ticker = ? AND date <= ?
-                    ORDER BY date DESC LIMIT 1
-                """, (ticker, date)).fetchone()
-
-                if row:
-                    cost_basis, quantity = row
-                    total_cost += cost_basis * quantity
-
-                    # 尝试从 daily_prices 表读取价格
-                    price_row = self.conn.execute("""
-                        SELECT price FROM daily_prices WHERE date = ? AND ticker = ?
-                    """, (date, ticker)).fetchone()
-
-                    if price_row:
-                        price = price_row[0]
-                    else:
-                        # 如果表中没有数据，从 Yahoo Finance 下载价格
-                        price = pdu.fetch_and_store_price(ticker, date)
-                        # # 获取价格信息
-                        # price = self.fetch_price_without_dbwrite(ticker, date)
-                    if price is not None and quantity is not None:
-                        total_value += price * quantity
-
-            total_values.append(total_value)
-            total_costs.append(total_cost)
-            total_profits.append(total_value - total_cost)
-        
-
-        file_name = [f"{file_path}/portfolio_line_chart_YTD.png", 
-                     f"{file_path}/portfolio_line_chart_1M.png", 
-                     f"{file_path}/portfolio_line_chart_3M.png", 
-                     f"{file_path}/portfolio_line_chart_6M.png",  
-                     f"{file_path}/portfolio_line_chart_3D.png",  
-                     f"{file_path}/portfolio_line_chart_1W.png"
-        ]
+        # Get dates
         today = datetime.now()
-        start_date =  (datetime(2024, 1, 1), 
-                        today - timedelta(days=30), 
-                        today - timedelta(days=90), 
-                        today - timedelta(days=180),
-                        today - timedelta(days=3),
-                        today - timedelta(days=7)
-        )
-        for i in range(len(start_date)):
-            self.plot_asset_value_vs_cost_util(total_costs=total_costs, 
-                                               total_profits=total_profits, 
-                                               dates=dates,
-                                               file_name=file_name[i], 
-                                               start_date=start_date[i])
-        # self.plot_asset_value_vs_cost_util(total_values, total_costs, file_name, date)
+        dates = PortfolioDisplayerUtil.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
+                                                                end_date=today,
+                                                                num_dates=number_of_points)
+        for i, date in enumerate(dates):
+            day_profit = 0
+            day_cost = 0
+            day_value = 0
+            for ticker in tickers:
+            # Get prices, quantity, and cost basis
+                quantity = pdu.get_stock_quantity(ticker=ticker, 
+                                                    date=date)
+                cost_basis = pdu.get_cost_basis(ticker=ticker,
+                                                date=date)
+                
+                # skip if quantity is 0
+                if quantity == 0:
+                    continue
 
-    def plot_asset_value_vs_cost_util(self, total_costs, total_profits, dates, \
-                                        file_name="results/portfolio_line_chart.png", \
-                                        start_date=datetime(2024, 1, 1)):
+                price = pdu.fetch_and_store_price(ticker=ticker,
+                                                date=date)
+                print(f"ticker: {ticker}, date: {date}, price: {price}, quantity: {quantity}, cost_basis: {cost_basis}")
 
-        # 转换日期为 datetime 对象
-        dates = [datetime.strptime(d, "%Y-%m-%d") for d in dates]
-        latest_cost = total_costs[-1]
-        new_values = [profit + latest_cost for profit in total_profits]
-        filtered_data = [(d, v, c) for d, v, c in zip(dates, new_values, total_costs) if d >= start_date]
+                value = price * quantity
+                cost = cost_basis * quantity
+                profit = value - cost
+                day_profit += profit
+                day_cost += cost
+                day_value += value
 
-        if not filtered_data:
-            print("No data available from 2024-01-01 onwards.")
-            return
+            total_values.append(day_value)
+            total_costs.append(day_cost)
+            total_profits.append(day_profit)
 
-        dates, new_values, total_costs = zip(*filtered_data)
-        print(dates)
+            latest_cost = total_costs[-1]
 
-        # Downsample data to at most 10 points
-        if len(dates) > 10:
-            step = len(dates) // 10
-            indices = list(range(0, len(dates), step))
-            if indices[-1] != len(dates) - 1:
-                indices.append(len(dates) - 1)
-            dates = [dates[i] for i in indices]
-            new_values = [new_values[i] for i in indices]
-            total_costs = [total_costs[i] for i in indices]
+        self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name)
+
+    def plot_asset_value_vs_cost_util(self, latest_cost, total_profits, dates, file_name):
+        '''
+        The logic is using the latest cost as the base cost, and adding the profit to the total value.
+        '''
+        total_values = [profit + latest_cost for profit in total_profits]
 
         # 绘制线性图
-        plt.figure(figsize=(12, 6))
-        plt.plot(dates, new_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
+        plt.figure(figsize=(18, 9))
+        plt.plot(dates, total_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
         # 在每个点上标注数值
-        for i, (x, y_value) in enumerate(zip(dates, new_values)):
-            # if i % 10 == 0 or i == 0:  # 每 10 个点标注一次
-            plt.text(x, y_value, f"{y_value:,.2f}", fontsize=10, ha='center', va='bottom', color='green')  # 标注总资产值
+        for i, (x, y_value) in enumerate(zip(dates, total_values)):
+            plt.text(x, y_value, f"{y_value:,.2f}", fontsize=12, ha='center', va='bottom', color='green')  # 标注总资产值
 
-        # Always show the value of the last data point
-        last_date = dates[-1]
-        last_value = new_values[-1]
-        # plt.text(last_date, last_value, f"{last_value:,.2f}", fontsize=10, ha='center', va='top', color='orange', fontweight='bold')
-
-        # Calculate and show percentage of profit increase
-        start_value = new_values[0]
+        # Calculate and show percentage of profit increase        
+        last_value = total_values[-1]
+        start_value = total_values[0]
         profit_increase_percentage = (last_value - start_value) / start_value * 100 if start_value != 0 else 0
 
-
         # 设置 x 轴为日期格式
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-        plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
+        # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+        # plt.gca().xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.gcf().autofmt_xdate()  # 自动调整日期显示的角度
 
         # 保存/显示线性图
@@ -226,7 +183,7 @@ class Plotter:
         plt.legend()
 
         # Show percentage of profit increase under the legend
-        plt.text(0.5, 0.8, f"Profit Increase: {round(last_value - start_value, 2):,} ({profit_increase_percentage:.2f}%)", fontsize=12, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
+        plt.text(0.5, 0.9, f"Profit Increase: {round(last_value - start_value, 2):,} ({profit_increase_percentage:.2f}%)", fontsize=18, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
 
         plt.xticks(rotation=45)
         plt.tight_layout()

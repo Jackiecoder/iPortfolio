@@ -12,8 +12,7 @@ class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
-        self.stock_splits = self.load_stock_splits('stock_split.csv')
-
+        self.stock_splits = self.load_stock_splits('transactions/stock_split.csv')
 
     def create_tables(self):
         with self.conn:
@@ -204,7 +203,6 @@ class PortfolioManager:
                 VALUES (?, ?, ?)
             """, (date, ticker, gain))
 
-
     def set_daily_cash(self, date, cash_balance):
         """
         设置某一天的现金余额。
@@ -237,30 +235,6 @@ class PortfolioManager:
 
             self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
                               (cost_basis, quantity, future_date, ticker))
-
-    # def update_future_cost_basis_and_quantity(self, date, ticker):
-    #     future_dates = self.conn.execute("SELECT date FROM stock_data WHERE ticker = ? AND date > ? ORDER BY date ASC",
-    #                                      (ticker, date)).fetchall()
-
-    #     row = self.conn.execute("SELECT cost_basis, total_quantity FROM stock_data WHERE ticker = ? AND date = ?",
-    #                             (ticker, date)).fetchone()
-    #     if not row:
-    #         return
-
-    #     cost_basis, quantity = row
-
-    #     for future_date in future_dates:
-    #         future_date = future_date[0]
-    #         trans_rows = self.conn.execute("SELECT cost, quantity FROM transactions WHERE date = ? AND ticker = ?",
-    #                                        (future_date, ticker)).fetchall()
-
-    #         for trans_cost, trans_quantity in trans_rows:
-    #             total_cost = round(cost_basis * quantity + trans_cost, 8)
-    #             quantity += trans_quantity
-    #             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
-
-    #         self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
-    #                           (cost_basis, quantity, future_date, ticker))
 
     def get_previous_date(self, date_str):
         date = datetime.strptime(date_str, "%Y-%m-%d")

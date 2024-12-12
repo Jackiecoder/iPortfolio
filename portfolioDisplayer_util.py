@@ -23,7 +23,7 @@ class PortfolioDisplayerUtil:
         query = "SELECT DISTINCT ticker FROM stock_data"
         result = self.conn.execute(query).fetchall()
         return [row[0] for row in result]
-    
+
     def get_cost_basis(self, ticker, date):
         query = "SELECT cost_basis FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1"
         result = self.conn.execute(query, (ticker, date)).fetchone()
@@ -42,7 +42,6 @@ class PortfolioDisplayerUtil:
 
         return first_date, last_date
     
-
     def get_overall_date_range(self):
         # 获取所有 tickers 的最早和最晚日期
         overall_date_range = self.conn.execute("""
@@ -53,7 +52,6 @@ class PortfolioDisplayerUtil:
 
         return overall_first_date, overall_last_date
     
-
     def get_realized_gain(self, ticker, date):
         # if ticker not exist 
         ticker_exists = self.conn.execute("""
@@ -70,7 +68,6 @@ class PortfolioDisplayerUtil:
         result = self.conn.execute(query, (ticker, date)).fetchone()
         return result[0] if result[0] is not None else 0
 
-
     def fetch_and_store_price(self, ticker, date):
         """
         从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
@@ -80,7 +77,6 @@ class PortfolioDisplayerUtil:
         result = self.conn.execute(query, (ticker, date)).fetchone()
         if result:
             return result[0]
-
         try:
             date_obj = datetime.strptime(date, "%Y-%m-%d")
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -102,6 +98,16 @@ class PortfolioDisplayerUtil:
             print(f"Error fetching price for {ticker} on {date}: {e}")
             return None
 
+    def fetch_and_store_prices_for_multiple_dates(self, ticker, dates):
+        """
+        从 Yahoo Finance 获取指定日期列表的股票价格，并存储到 daily_prices 表。
+        """
+        prices = []
+        for date in dates:
+            price = self.fetch_and_store_price(ticker, date)
+            prices.append(price)
+        return prices
+
     def fetch_and_store_latest_price(self, ticker):
         today = datetime.now().strftime("%Y-%m-%d")
 
@@ -115,4 +121,42 @@ class PortfolioDisplayerUtil:
             return existing_price[0]
 
         return self.fetch_and_store_price(ticker, today)
-    
+
+    @staticmethod
+    def get_evenly_spaced_dates(start_date, end_date, num_dates=20):
+        """
+        从 start_date 到 end_date 中均匀取出 num_dates 个日期点，返回长度为 num_dates 的日期列表。
+        start_date 和 end_date 必须包括在内。
+        
+        Parameters:
+        - start_date (str): 起始日期，格式为 "YYYY-MM-DD"
+        - end_date (str): 结束日期，格式为 "YYYY-MM-DD"
+        - num_dates (int): 需要取出的日期点数量
+        
+        Returns:
+        - List[datetime]: 长度为 num_dates 的日期列表
+        """
+        # start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        # end_date = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        if num_dates < 2:
+            raise ValueError("num_dates must be at least 2 to include both start_date and end_date.")
+        
+        delta = (end_date - start_date) / (num_dates - 1)
+        dates = [start_date + i * delta for i in range(num_dates)]
+        dates = [date.strftime("%Y-%m-%d") for date in dates]
+        
+        return dates
+
+    @staticmethod
+    def calculate_ytd_date_delta():
+        """
+        计算 Year-to-Date (YTD) 的日期差异，返回当前日期和当年年初的日期之间的天数差异。
+        
+        Returns:
+        - int: 当前日期和当年年初的日期之间的天数差异
+        """
+        today = datetime.now()
+        start_of_year = datetime(today.year, 1, 1)
+        delta = (today - start_of_year).days
+        return delta
