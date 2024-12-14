@@ -1,6 +1,5 @@
 # input data    
 TRANSACTIONS_PATH = "transactions/"
-TRANSACTIONS_CATS = ["robinhood", "schwab", "ira", "fidelity", "crypto"]
 CASH_PATH = "transactions/cash/cash.csv"
 
 # output data
@@ -22,5 +21,3 @@ DATES = {
     "YTD": ("YTD", 3)
 }
 
-# crypto tickers
-CRYPTO_TICKERS = ["BTC-USD", "ETH-USD", "ADA-USD"]

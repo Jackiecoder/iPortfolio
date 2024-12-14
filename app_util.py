@@ -5,6 +5,7 @@ from portfolioDisplayer import Displayer
 from portfolioTickerPlotter import TickerRORPlotter
 from portfolioDisplayer_util import PortfolioDisplayerUtil
 from const import *
+from const_private import *
 
 def load_transactions():
     clear_table()
