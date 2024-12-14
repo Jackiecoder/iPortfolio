@@ -1,3 +1,4 @@
 yfinance
 matplotlib
 tabulate
+pandas_market_calendars

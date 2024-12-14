@@ -7,6 +7,7 @@ CASH_PATH = "transactions/cash/cash.csv"
 ROR_TABLE_PATH = "results/ror_table/"
 CHART_PATH = "results/charts/"
 DBVIEWER_PATH = "results/dbviewer/"
+TICKER_CHART_PATH = "results/ticker_line_chart/"
 
 # date match
 DATES = {
@@ -20,3 +21,6 @@ DATES = {
     "1Y": (365, 3),
     "YTD": ("YTD", 3)
 }
+
+# crypto tickers
+CRYPTO_TICKERS = ["BTC-USD", "ETH-USD", "ADA-USD"]

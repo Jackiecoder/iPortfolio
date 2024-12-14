@@ -3,11 +3,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
+import pandas_market_calendars as mcal
 
 
 class PortfolioDisplayerUtil:
-    def __init__(self, db_name="portfolio.db"):
+    def __init__(self, db_name="portfolio.db", debug=False):
         self.conn = sqlite3.connect(db_name)
+        self.debug = debug
+
+    def log(self, message):
+        if self.debug:
+            print(message)
 
     def get_cash(self, date):
         query = "SELECT cash_balance FROM daily_cash WHERE date <= ? ORDER BY date DESC LIMIT 1"
@@ -82,20 +88,33 @@ class PortfolioDisplayerUtil:
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
             end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
 
+
+            self.log(f"Fetching price for {ticker} on {date}...")
             history = yf.download(ticker, start_date, end_date)
             if not history.empty:
+                # Get the last valid price and date
                 price_series = history['Close']
-                price = list(round(price_series.iloc[-1], 8))[0]
-                with self.conn:
-                    self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
-                                      (date, ticker, price))
-                print(f"Fetched and stored price for {ticker} on {date}: {price}")
-                return price
-            print(f"No price data found for {ticker} on {date}")
+                last_valid_price = list(round(price_series.iloc[-1], 8))[0]
+                last_valid_date = price_series.index[-1].strftime("%Y-%m-%d")
+
+                # if market is close and ticker is not crypto, save the date, price to db
+                is_market_open = PortfolioDisplayerUtil.is_market_open(date)
+                if is_market_open == False and ticker not in ["BTC-USD", "ETH-USD", "ADA-USD"]:
+                    self.log(f"Market is closed on {date}, saving the last valid price {last_valid_price} on {date}")
+                    with self.conn:
+                        self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                                        (date, ticker, last_valid_price))
+                else:
+                    self.log(f"Market is open on {date}, saving the last valid price {last_valid_price} on {last_valid_date}")
+                    with self.conn:
+                        self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                                        (last_valid_date, ticker, last_valid_price))
+                return last_valid_price
+            self.log(f"No price data found for {ticker} on {date}")
             return None
 
         except Exception as e:
-            print(f"Error fetching price for {ticker} on {date}: {e}")
+            self.log(f"Error fetching price for {ticker} on {date}: {e}")
             return None
 
     def fetch_and_store_prices_for_multiple_dates(self, ticker, dates):
@@ -121,6 +140,24 @@ class PortfolioDisplayerUtil:
             return existing_price[0]
 
         return self.fetch_and_store_price(ticker, today)
+
+    def clear_daily_prices(self, date, before=False):
+        """
+        清除 daily_prices 表中基于日期的记录。
+
+        Parameters:
+        - date (str): 日期，格式为 "YYYY-MM-DD"
+        - before (bool): 如果为 True,则删除指定日期之前的记录,否则删除指定日期之后的记录。
+        """
+        if before:
+            query = "DELETE FROM daily_prices WHERE date < ?"
+        else:
+            query = "DELETE FROM daily_prices WHERE date >= ?"
+        
+        with self.conn:
+            self.conn.execute(query, (date,))
+            print(f"Cleared daily_prices records {'before' if before else 'after'} {date}")
+
 
     @staticmethod
     def get_evenly_spaced_dates(start_date, end_date, num_dates=20):
@@ -160,3 +197,32 @@ class PortfolioDisplayerUtil:
         start_of_year = datetime(today.year, 1, 1)
         delta = (today - start_of_year).days
         return delta
+    
+    @staticmethod
+    def is_market_open(date, market="NYSE"):
+        """
+        Check if the given date is a market open day.
+
+        Parameters:
+            date (str): The date in 'YYYY-MM-DD' format to check.
+            market (str): The market code (default is 'NYSE').
+
+        Returns:
+            bool: True if the market is open on the given date, False otherwise.
+        """
+        try:
+            # Parse the input date
+            date = pd.Timestamp(date)
+
+            # Get the market calendar
+            market_calendar = mcal.get_calendar(market)
+
+            # Get the market schedule for the year of the given date
+            schedule = market_calendar.schedule(start_date=date.strftime('%Y-01-01'), end_date=date.strftime('%Y-12-31'))
+
+            # Check if the market is open on the given date
+            return date in schedule.index
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+

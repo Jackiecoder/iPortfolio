@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from portfolioDisplayer_util import PortfolioDisplayerUtil
 
 class Displayer(PortfolioDisplayerUtil):
-    def __init__(self, db_name="portfolio.db"):
+    def __init__(self, db_name="portfolio.db", debug=False):
         self.conn = sqlite3.connect(db_name)
+        self.debug = debug
 
     def calculate_annualized_return(self, start_date, end_date, value, cost):
         duration_years = max((datetime.strptime(end_date, "%Y-%m-%d") \
@@ -366,7 +367,8 @@ class Displayer(PortfolioDisplayerUtil):
             other_row["Portfolio (%)"] = None
             other_row["Annualized RoR (%)"] = None
             summary_df = summary_df[(summary_df["Total Cost"] != 0) | (summary_df["Total Value"] != 0)]
-            summary_df = pd.concat([summary_df, pd.DataFrame([other_row])], ignore_index=True)
+            other_row_df = pd.DataFrame([other_row]).dropna(axis=1, how='all')  # 排除所有空或全为 NA 的列
+            summary_df = pd.concat([summary_df, other_row_df], ignore_index=True)
 
         # 按 Portfolio (%) 降序排序，保留 Total 行在最后
         summary_df = pd.concat([

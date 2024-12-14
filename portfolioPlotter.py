@@ -100,7 +100,7 @@ class Plotter:
         plt.savefig(file_name)
         plt.show()
 
-    def plot_line_chart(self, file_name, time_period, number_of_points=15):
+    def plot_line_chart(self, file_name, time_period, time_str, number_of_points=15):
         # dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
@@ -136,7 +136,6 @@ class Plotter:
 
                 price = pdu.fetch_and_store_price(ticker=ticker,
                                                 date=date)
-                print(f"ticker: {ticker}, date: {date}, price: {price}, quantity: {quantity}, cost_basis: {cost_basis}")
 
                 value = price * quantity
                 cost = cost_basis * quantity
@@ -151,9 +150,9 @@ class Plotter:
 
             latest_cost = total_costs[-1]
 
-        self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name)
+        self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name, time_str)
 
-    def plot_asset_value_vs_cost_util(self, latest_cost, total_profits, dates, file_name):
+    def plot_asset_value_vs_cost_util(self, latest_cost, total_profits, dates, file_name, time_str):
         '''
         The logic is using the latest cost as the base cost, and adding the profit to the total value.
         '''
@@ -161,10 +160,10 @@ class Plotter:
 
         # 绘制线性图
         plt.figure(figsize=(18, 9))
-        plt.plot(dates, total_values, label="Total Asset Value (Excluding Cash)", linestyle='-')
+        plt.plot(dates, total_values, label="Total Asset Value (Excluding cash)", linestyle='-')
         # 在每个点上标注数值
         for i, (x, y_value) in enumerate(zip(dates, total_values)):
-            plt.text(x, y_value, f"{y_value:,.2f}", fontsize=12, ha='center', va='bottom', color='green')  # 标注总资产值
+            plt.text(x, y_value, f"{int(y_value):,}", fontsize=16, ha='center', va='bottom', color='green')  # 标注总资产值
 
         # Calculate and show percentage of profit increase        
         last_value = total_values[-1]
@@ -179,7 +178,7 @@ class Plotter:
         # 保存/显示线性图
         plt.xlabel("Date")
         plt.ylabel("Value")
-        plt.title("Portfolio Asset Value vs Total Cost Over Time")
+        plt.title(f"Portfolio Asset Value ({time_str})")
         plt.legend()
 
         # Show percentage of profit increase under the legend
@@ -189,6 +188,55 @@ class Plotter:
         plt.tight_layout()
         plt.savefig(file_name)
         plt.show()
+
+    def plot_ticker_line_chart(self, file_name, ticker, time_period, time_str, number_of_points=15):
+        # dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
+        total_values = []
+        total_costs = []
+        total_profits = []
+        pdu = PortfolioDisplayerUtil()
+
+        # calculate dates from ytd
+        if time_period == "YTD":
+            time_period = PortfolioDisplayerUtil.calculate_ytd_date_delta()
+
+        # Get dates
+        today = datetime.now()
+        dates = PortfolioDisplayerUtil.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
+                                                                end_date=today,
+                                                                num_dates=number_of_points)
+        emtpy_dates = []
+        for i, date in enumerate(dates):
+            # Get prices, quantity, and cost basis
+            quantity = pdu.get_stock_quantity(ticker=ticker, 
+                                                date=date)
+            cost_basis = pdu.get_cost_basis(ticker=ticker,
+                                            date=date)
+            
+            # skip if quantity is 0
+            if quantity == 0:
+                emtpy_dates.append(date)
+                continue
+
+            price = pdu.fetch_and_store_price(ticker=ticker,
+                                            date=date)
+
+            value = price * quantity
+            cost = cost_basis * quantity
+            profit = value - cost
+
+            total_values.append(value)
+            total_costs.append(cost)
+            total_profits.append(profit)
+            latest_cost = total_costs[-1]
+        
+        dates = [date for date in dates if date not in emtpy_dates]
+        # print(file_name)
+        # print(f"latest_cost: {latest_cost}, total_profits: {total_profits}, dates: {dates},time_str: {time_str}")
+        # print(len(total_profits), len(dates))
+
+        self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name, time_str)
+
 
     def close(self):
         self.conn.close()

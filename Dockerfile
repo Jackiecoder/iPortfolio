@@ -10,6 +10,9 @@ COPY . /app
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install pandas_market_calendars
+RUN pip install pandas_market_calendars
+
 # Make port 80 available to the world outside this container
 EXPOSE 80
 
