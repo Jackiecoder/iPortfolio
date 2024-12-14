@@ -1,5 +1,5 @@
 from portfolioManager import PortfolioManager
-from databaseViewer import DatabaseViewer
+from src.databaseViewer import DatabaseViewer
 from portfolioPlotter import Plotter
 from portfolioDisplayer import Displayer
 from portfolioTickerPlotter import TickerRORPlotter
