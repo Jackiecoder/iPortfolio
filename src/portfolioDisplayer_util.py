@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
 import pandas_market_calendars as mcal
-
+from const_private import *
+from const import *
 
 class PortfolioDisplayerUtil:
     def __init__(self, db_name="portfolio.db", debug=False):
@@ -98,8 +99,8 @@ class PortfolioDisplayerUtil:
                 last_valid_date = price_series.index[-1].strftime("%Y-%m-%d")
 
                 # if market is close and ticker is not crypto, save the date, price to db
-                is_market_open = PortfolioDisplayerUtil.is_market_open(date)
-                if is_market_open == False and ticker not in ["BTC-USD", "ETH-USD", "ADA-USD"]:
+                is_market_open = Util.is_market_open(date)
+                if is_market_open == False and ticker not in CRYPTO_TICKERS:
                     self.log(f"Market is closed on {date}, saving the last valid price {last_valid_price} on {date}")
                     with self.conn:
                         self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
@@ -158,6 +159,103 @@ class PortfolioDisplayerUtil:
             self.conn.execute(query, (date,))
             print(f"Cleared daily_prices records {'before' if before else 'after'} {date}")
 
+class Util:
+    @staticmethod
+    def log(message):
+        if DBUG:
+            print(message)
+
+    @staticmethod
+    def fetch_and_store_price(db_conn, ticker, date):
+        """
+        从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
+        """
+        # Check if the ticker and date already exist in the daily_prices table
+        query = "SELECT price FROM daily_prices WHERE ticker = ? AND date = ?"
+        result = db_conn.execute(query, (ticker, date)).fetchone()
+        if result:
+            return result[0]
+        try:
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
+            start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
+            # end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+            end_date = date_obj.strftime("%Y-%m-%d")
+
+            Util.log(f"Fetching price for {ticker} on {date}...")
+            history = yf.download(ticker, start_date, end_date)
+            if not history.empty:
+                # Get the last valid price and date
+                price_series = history['Close']
+                last_valid_price = list(round(price_series.iloc[-1], 8))[0]
+                last_valid_date = price_series.index[-1].strftime("%Y-%m-%d")
+
+                # if market is close and ticker is not crypto, save the date, price to db
+                """
+                If it's crypto, only save price if today > date, otherwise price will fetch on the fly 
+                If it's not crypto, check if it's market open.
+                    if market is close, means this date will NOT have price data, 
+                        then just save the last open date, price to db
+                    if market is open, means this date will HAVE price data. So the data must be fetched after close.
+                        The price data on last 7 days will be fetched,
+                          and the lastest price will be today's price if today is already closed, 
+                          otherwise the last open date price will be saved.
+                """
+                if ticker in CRYPTO_TICKERS:
+                    # if it's crypto, only save price if today > date, otherwise price will fetch on the fly
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    if today > date:
+                        Util.log(f"Saving the last valid price {last_valid_price} on {date}")
+                        with db_conn:
+                            db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                                            (date, ticker, last_valid_price))
+                    else:
+                        Util.log(f"Today is not closed yet, will not save the price data for {ticker} on {date}")
+                else:
+                    is_market_open = Util.is_market_open(date)
+                    if is_market_open == False:
+                        # if market is close and ticker is not crypto, save the date, price to db
+                        Util.log(f"Market is closed on {date}, saving the last valid price {last_valid_price} on {date}")
+                        with db_conn:
+                            db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                                            (date, ticker, last_valid_price))
+                    else:
+                        # if market is open, save the last valid price and date
+                        Util.log(f"Market is open on {date}, saving the last valid price {last_valid_price} on {last_valid_date}")
+                        with db_conn:
+                            db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                                            (last_valid_date, ticker, last_valid_price))
+
+                # is_market_open = Util.is_market_open(date)
+                # if is_market_open == False and ticker not in CRYPTO_TICKERS:
+                #     # if market is close and ticker is not crypto, save the date, price to db
+                #     Util.log(f"Market is closed on {date}, saving the last valid price {last_valid_price} on {date}")
+                #     with db_conn:
+                #         db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                #                         (date, ticker, last_valid_price))
+                # else:
+                #     # if market is open, save the last valid price and date
+                #     Util.log(f"Market is open on {date}, saving the last valid price {last_valid_price} on {last_valid_date}")
+                #     with db_conn:
+                #         db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+                #                         (last_valid_date, ticker, last_valid_price))
+                return last_valid_price
+            Util.log(f"No price data found for {ticker} on {date}")
+            return None
+
+        except Exception as e:
+            Util.log(f"Error fetching price for {ticker} on {date}: {e}")
+            return None
+
+    @staticmethod
+    def fetch_and_store_prices_for_multiple_dates(db_conn, ticker, dates):
+        """
+        从 Yahoo Finance 获取指定日期列表的股票价格，并存储到 daily_prices 表。
+        """
+        prices = []
+        for date in dates:
+            price = Util.fetch_and_store_price(db_conn, ticker, date)
+            prices.append(price)
+        return prices
 
     @staticmethod
     def get_evenly_spaced_dates(start_date, end_date, num_dates=20):

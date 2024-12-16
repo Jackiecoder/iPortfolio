@@ -3,7 +3,7 @@ import sqlite3
 import yfinance as yf
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
-from portfolioDisplayer_util import PortfolioDisplayerUtil
+from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
 
 
 class Plotter:
@@ -68,7 +68,7 @@ class Plotter:
 
         for ticker in tickers:
             # 获取最新价格并尝试存储到 daily_prices 表
-            latest_price = self.fetch_and_store_latest_price(ticker)
+            latest_price = Util.fetch_and_store_latest_price(self.conn, ticker)
 
             # 获取最新一天的持仓数量和成本基础
             stock_row = self.conn.execute("""
@@ -109,14 +109,14 @@ class Plotter:
 
         # calculate dates from ytd
         if time_period == "YTD":
-            time_period = PortfolioDisplayerUtil.calculate_ytd_date_delta()
+            time_period = Util.calculate_ytd_date_delta()
 
         # 获取所有出现过的ticker列表
         tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
 
         # Get dates
         today = datetime.now()
-        dates = PortfolioDisplayerUtil.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
+        dates = Util.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
                                                                 end_date=today,
                                                                 num_dates=number_of_points)
         for i, date in enumerate(dates):
@@ -134,8 +134,9 @@ class Plotter:
                 if quantity == 0:
                     continue
 
-                price = pdu.fetch_and_store_price(ticker=ticker,
-                                                date=date)
+                price = Util.fetch_and_store_price(db_conn=self.conn,
+                                                   ticker=ticker,
+                                                   date=date)
 
                 value = price * quantity
                 cost = cost_basis * quantity
@@ -182,7 +183,7 @@ class Plotter:
         plt.legend()
 
         # Show percentage of profit increase under the legend
-        plt.text(0.5, 0.9, f"Profit Increase: {round(last_value - start_value, 2):,} ({profit_increase_percentage:.2f}%)", fontsize=18, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
+        plt.text(0.5, 0.95, f"Profit Increase: {round(last_value - start_value, 2):,} ({profit_increase_percentage:.2f}%)", fontsize=18, ha='center', va='center', transform=plt.gca().transAxes, color='purple', fontweight='bold')
 
         plt.xticks(rotation=45)
         plt.tight_layout()
@@ -198,11 +199,11 @@ class Plotter:
 
         # calculate dates from ytd
         if time_period == "YTD":
-            time_period = PortfolioDisplayerUtil.calculate_ytd_date_delta()
+            time_period = Util.calculate_ytd_date_delta()
 
         # Get dates
         today = datetime.now()
-        dates = PortfolioDisplayerUtil.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
+        dates = Util.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
                                                                 end_date=today,
                                                                 num_dates=number_of_points)
         emtpy_dates = []

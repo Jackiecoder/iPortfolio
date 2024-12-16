@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pytz
 import os
 import matplotlib.dates as mdates
+from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
 
 
 class PortfolioManager:
@@ -246,49 +247,30 @@ class PortfolioManager:
         today = datetime.now()
         return date < today
 
-    def fetch_price_without_dbwrite(self, ticker, date):
-        stock = yf.Ticker(ticker)
-        date_obj = datetime.strptime(date, "%Y-%m-%d")
-        start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-        end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+    # def fetch_and_store_price(self, ticker, date):
+    #     """
+    #     从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
+    #     """
+    #     try:
+    #         date_obj = datetime.strptime(date, "%Y-%m-%d")
+    #         start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
+    #         end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        history = yf.download(ticker, start_date, end_date)
-        if not history.empty:
-            price_series = history['Close']
-            if not price_series.empty:
-                price = list(round(price_series.iloc[-1], 8))[0]
-                return price
-            else:
-                print(f"No price data found for {ticker} on or before {date}")
-                return None
-        else:
-            print(f"No data available for {ticker} in the date range")
-            return None
+    #         history = yf.download(ticker, start_date, end_date)
+    #         if not history.empty:
+    #             price_series = history['Close']
+    #             price = list(round(price_series.iloc[-1], 8))[0]
+    #             with self.conn:
+    #                 self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
+    #                                   (date, ticker, price))
+    #             print(f"Fetched and stored price for {ticker} on {date}: {price}")
+    #             return price
+    #         print(f"No price data found for {ticker} on {date}")
+    #         return None
 
-    def fetch_and_store_price(self, ticker, date):
-        """
-        从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
-        """
-        try:
-            date_obj = datetime.strptime(date, "%Y-%m-%d")
-            start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-            end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
-
-            history = yf.download(ticker, start_date, end_date)
-            if not history.empty:
-                price_series = history['Close']
-                price = list(round(price_series.iloc[-1], 8))[0]
-                with self.conn:
-                    self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
-                                      (date, ticker, price))
-                print(f"Fetched and stored price for {ticker} on {date}: {price}")
-                return price
-            print(f"No price data found for {ticker} on {date}")
-            return None
-
-        except Exception as e:
-            print(f"Error fetching price for {ticker} on {date}: {e}")
-            return None
+    #     except Exception as e:
+    #         print(f"Error fetching price for {ticker} on {date}: {e}")
+    #         return None
 
     def fetch_and_store_latest_price(self, ticker):
         today = datetime.now().strftime("%Y-%m-%d")
@@ -302,7 +284,8 @@ class PortfolioManager:
             print(f"Price for {ticker} on {today} already exists: {existing_price[0]}")
             return existing_price[0]
 
-        return self.fetch_and_store_price(ticker, today)
+        # return self.fetch_and_store_price(ticker, today)
+        return Util.fetch_and_store_price(self.conn, ticker, today)
 
     def fetch_price(self, ticker, date, ori_date):
         try:
@@ -314,7 +297,8 @@ class PortfolioManager:
             stock = yf.Ticker(ticker)
             date_obj = datetime.strptime(date, "%Y-%m-%d")
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-            end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+            # end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+            end_date = date_obj.strftime("%Y-%m-%d")
 
             history = yf.download(ticker, start_date, end_date)
 
@@ -347,33 +331,33 @@ class PortfolioManager:
         cash_balance = cash_row[0] if cash_row else 0
         return cash_balance
 
-    def print_all_holding(self):
-        dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
-        tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
-        date = dates[-1]
+    # def print_all_holding(self):
+    #     dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
+    #     tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
+    #     date = dates[-1]
 
-        for ticker in tickers:
-            # 获取当天或最近的有效 cost_basis 和 quantity
-            row = self.conn.execute("""
-                SELECT cost_basis, total_quantity FROM stock_data
-                WHERE ticker = ? AND date <= ?
-                ORDER BY date DESC LIMIT 1
-            """, (ticker, date)).fetchone()
+    #     for ticker in tickers:
+    #         # 获取当天或最近的有效 cost_basis 和 quantity
+    #         row = self.conn.execute("""
+    #             SELECT cost_basis, total_quantity FROM stock_data
+    #             WHERE ticker = ? AND date <= ?
+    #             ORDER BY date DESC LIMIT 1
+    #         """, (ticker, date)).fetchone()
 
-            if row:
-                cost_basis, quantity = row
+    #         if row:
+    #             cost_basis, quantity = row
 
-                # 尝试从 daily_prices 表读取价格
-                price_row = self.conn.execute("""
-                    SELECT price FROM daily_prices WHERE date = ? AND ticker = ?
-                """, (date, ticker)).fetchone()
+    #             # 尝试从 daily_prices 表读取价格
+    #             price_row = self.conn.execute("""
+    #                 SELECT price FROM daily_prices WHERE date = ? AND ticker = ?
+    #             """, (date, ticker)).fetchone()
 
-                if price_row:
-                    price = price_row[0]
-                else:
-                    # 如果表中没有数据，从 Yahoo Finance 下载价格
-                    price = self.fetch_and_store_price(ticker, date)
-                print(f'ticker: {ticker}, cost_basis: {cost_basis}, price: {price}, quantity: {quantity}')
+    #             if price_row:
+    #                 price = price_row[0]
+    #             else:
+    #                 # 如果表中没有数据，从 Yahoo Finance 下载价格
+    #                 price = self.fetch_and_store_price(ticker, date)
+    #             print(f'ticker: {ticker}, cost_basis: {cost_basis}, price: {price}, quantity: {quantity}')
 
     def close(self):
         self.conn.close()
@@ -405,7 +389,7 @@ class PortfolioManager:
         for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
             self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
 
-        print(f"All transactions from {file_path} have been loaded with daily aggregation.")
+        print(f"Successfully loaded transactions from {source}.")
 
 
     def load_daily_cash_from_csv(self, file_path):
@@ -433,7 +417,7 @@ class PortfolioManager:
         for file_name in os.listdir(folder_path):
             if file_name.endswith('.csv') and file_name != 'demo_msft.csv':
                 file_path = os.path.join(folder_path, file_name)
-                print(f"Loading transactions from file: {file_path}")
+                print(f"Loading transactions from file: {file_name}")
                 self.load_transactions_from_csv(file_path)
 
     def clear_table(self, table_name):

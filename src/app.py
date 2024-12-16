@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3 
 from app_util import *
 
-yyyy_mm_dd = [ ("2024", "11", "01")]
+yyyy_mm_dd = [ ("2024", "12", "15")]
 
 def main():
     print("Welcome to Portfolio Manager")
@@ -15,7 +15,7 @@ def main():
     plot_line_chart()
 
     '''Show Ticker ROR'''
-    # plot_ticker_line_chart()
+    plot_ticker_line_chart()
 
     '''Download Database from SQLite'''
     view_database()

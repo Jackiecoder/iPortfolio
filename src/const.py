@@ -4,7 +4,7 @@ CASH_PATH = "transactions/cash/cash.csv"
 
 # output data
 ROR_TABLE_PATH = "results/ror_table/"
-CHART_PATH = "results/charts/"
+CHART_PATH = "results/line_charts/"
 DBVIEWER_PATH = "results/dbviewer/"
 TICKER_CHART_PATH = "results/ticker_line_chart/"
 
@@ -21,3 +21,8 @@ DATES = {
     "YTD": ("YTD", 3)
 }
 
+# Title ==
+title_line = "=============================="
+
+# Debug mode
+DBUG = True
