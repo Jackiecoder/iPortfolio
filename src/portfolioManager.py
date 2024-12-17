@@ -244,36 +244,11 @@ class PortfolioManager:
 
     def is_past_date(self, date_str):
         date = datetime.strptime(date_str, "%Y-%m-%d")
-        today = datetime.now()
+        today = Util.get_today_est_dt()
         return date < today
 
-    # def fetch_and_store_price(self, ticker, date):
-    #     """
-    #     从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
-    #     """
-    #     try:
-    #         date_obj = datetime.strptime(date, "%Y-%m-%d")
-    #         start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-    #         end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
-
-    #         history = yf.download(ticker, start_date, end_date)
-    #         if not history.empty:
-    #             price_series = history['Close']
-    #             price = list(round(price_series.iloc[-1], 8))[0]
-    #             with self.conn:
-    #                 self.conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
-    #                                   (date, ticker, price))
-    #             print(f"Fetched and stored price for {ticker} on {date}: {price}")
-    #             return price
-    #         print(f"No price data found for {ticker} on {date}")
-    #         return None
-
-    #     except Exception as e:
-    #         print(f"Error fetching price for {ticker} on {date}: {e}")
-    #         return None
-
     def fetch_and_store_latest_price(self, ticker):
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = Util.get_today_est_str()
 
         # 检查是否已有最新价格
         existing_price = self.conn.execute("""

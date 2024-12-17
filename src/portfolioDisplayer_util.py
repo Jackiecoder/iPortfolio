@@ -1,11 +1,11 @@
 import sqlite3
 import pandas as pd
-import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
 import pandas_market_calendars as mcal
 from const_private import *
 from const import *
+import pytz
 
 class PortfolioDisplayerUtil:
     def __init__(self, db_name="portfolio.db", debug=False):
@@ -129,7 +129,7 @@ class PortfolioDisplayerUtil:
         return prices
 
     def fetch_and_store_latest_price(self, ticker):
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = Util.get_today_est_str()
 
         # 检查是否已有最新价格
         existing_price = self.conn.execute("""
@@ -176,15 +176,19 @@ class Util:
         if result:
             return result[0]
         try:
+            Util.log(f"Fetching price for {ticker} on {date}...")
             date_obj = datetime.strptime(date, "%Y-%m-%d")
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
-            # end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
-            end_date = date_obj.strftime("%Y-%m-%d")
+            end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
+            Util.log(f"start_date: {start_date}, end_date: {end_date}")
 
             Util.log(f"Fetching price for {ticker} on {date}...")
+            # yf.download [start_date, end_date), start_date is included, end_date is excluded
+            # https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html#yfinance.download
             history = yf.download(ticker, start_date, end_date)
             if not history.empty:
                 # Get the last valid price and date
+                Util.log(f"hitory: {history}")
                 price_series = history['Close']
                 last_valid_price = list(round(price_series.iloc[-1], 8))[0]
                 last_valid_date = price_series.index[-1].strftime("%Y-%m-%d")
@@ -202,7 +206,7 @@ class Util:
                 """
                 if ticker in CRYPTO_TICKERS:
                     # if it's crypto, only save price if today > date, otherwise price will fetch on the fly
-                    today = datetime.now().strftime("%Y-%m-%d")
+                    today = Util.get_today_est_str()
                     if today > date:
                         Util.log(f"Saving the last valid price {last_valid_price} on {date}")
                         with db_conn:
@@ -291,8 +295,9 @@ class Util:
         Returns:
         - int: 当前日期和当年年初的日期之间的天数差异
         """
-        today = datetime.now()
-        start_of_year = datetime(today.year, 1, 1)
+        today = Util.get_today_est_dt()
+        start_of_year = datetime(today.year, 1, 1, tzinfo=today.tzinfo)
+        print(today, start_of_year)
         delta = (today - start_of_year).days
         return delta
     
@@ -324,3 +329,20 @@ class Util:
             print(f"Error: {e}")
             return False
 
+    @staticmethod
+    def get_today_est_str():
+        """
+        获取当前日期(EST 时区)。
+        """
+        est = pytz.timezone('US/Eastern')
+        today_est = datetime.now(est).strftime("%Y-%m-%d")
+        return today_est
+    
+    @staticmethod
+    def get_today_est_dt():
+        """
+        获取当前日期(EST 时区)。
+        """
+        est = pytz.timezone('US/Eastern')
+        today_est = datetime.now(est)
+        return today_est

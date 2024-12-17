@@ -25,4 +25,4 @@ DATES = {
 title_line = "=============================="
 
 # Debug mode
-DBUG = True
+DBUG = False

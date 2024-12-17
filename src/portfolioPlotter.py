@@ -36,7 +36,7 @@ class Plotter:
             return None
 
     def fetch_and_store_latest_price(self, ticker):
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = Util.get_today_est_str()
 
         # 检查是否已有最新价格
         existing_price = self.conn.execute("""
@@ -115,7 +115,7 @@ class Plotter:
         tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
 
         # Get dates
-        today = datetime.now()
+        today = Util.get_today_est_dt()
         dates = Util.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
                                                                 end_date=today,
                                                                 num_dates=number_of_points)
@@ -124,7 +124,7 @@ class Plotter:
             day_cost = 0
             day_value = 0
             for ticker in tickers:
-            # Get prices, quantity, and cost basis
+                # Get prices, quantity, and cost basis
                 quantity = pdu.get_stock_quantity(ticker=ticker, 
                                                     date=date)
                 cost_basis = pdu.get_cost_basis(ticker=ticker,
@@ -202,7 +202,7 @@ class Plotter:
             time_period = Util.calculate_ytd_date_delta()
 
         # Get dates
-        today = datetime.now()
+        today = Util.get_today_est_dt()
         dates = Util.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
                                                                 end_date=today,
                                                                 num_dates=number_of_points)

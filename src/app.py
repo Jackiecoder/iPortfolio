@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3 
 from app_util import *
 
-yyyy_mm_dd = [ ("2024", "12", "15")]
+yyyy_mm_dd = [ ("2024", "12", "16")]
 
 def main():
     print("Welcome to Portfolio Manager")
