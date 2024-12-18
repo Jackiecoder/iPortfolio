@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
-from portfolioDisplayer_util import PortfolioDisplayerUtil
+from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
 
 class Displayer(PortfolioDisplayerUtil):
     def __init__(self, db_name="portfolio.db", debug=False):
@@ -246,7 +246,7 @@ class Displayer(PortfolioDisplayerUtil):
                 total_profit += realized_gain
                 continue
 
-            todays_price = self.fetch_and_store_price(ticker=ticker, date=date)
+            todays_price = Util.fetch_and_store_price(db_conn=self.conn, ticker=ticker, date=date)
             cost_basis = self.get_cost_basis(ticker=ticker, date=date)
             total_value_ticker = quantity_ticker * todays_price
             total_cost_ticker = cost_basis * quantity_ticker

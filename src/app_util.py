@@ -88,7 +88,7 @@ def test():
     # PortfolioManager()
     dbv = DatabaseViewer()
     pdu = PortfolioDisplayerUtil()
-    pdu.clear_daily_prices(date="2024-12-10", before=False)
+    pdu.clear_daily_prices(date="2024-12-16", before=False)
     dbv.save_daily_prices_to_csv("./test_daily_prices_1.csv")
     # pdu.fetch_and_store_price("NVDA", "2024-12-15")
     # dbv.save_daily_prices_to_csv("./test_daily_prices_2.csv")

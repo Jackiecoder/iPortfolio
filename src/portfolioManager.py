@@ -116,10 +116,23 @@ class PortfolioManager:
                 VALUES (?, ?, ?, ?, ?)
             """, (date, ticker, cost, quantity, source))
 
-        # Update realized gains if the transaction has a negative value
-        # cost > 0, quantity > 0: buy
-        # cost < 0, quantity < 0: sell
-        # cost < 0, quantity = 0: dividend
+        '''
+        Update realized gains if the transaction has a negative value
+        cost > 0, quantity > 0: buy
+        cost < 0, quantity < 0: sell
+        cost < 0, quantity = 0: dividend
+        cost > 0, quantity = 0: fee (e.g. gas fee)
+
+        -------------------------------------------------------------
+                          |  cost > 0  |  cost < 0    |   cost = 0
+        -------------------------------------------------------------
+         quantity > 0     |    buy     |     X        |    X
+        -------------------------------------------------------------
+         quantity = 0     |    fee     |  dividend    |    X
+        -------------------------------------------------------------
+         quantity < 0     |     X      |    sell      |    X
+        '''
+
         # For sell and dividend, update realized gains and change the quantity of stock_data only
         if cost < 0:
             # only update realized gains and the stock data holding

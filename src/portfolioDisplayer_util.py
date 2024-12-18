@@ -7,6 +7,8 @@ from const_private import *
 from const import *
 import pytz
 
+TEMP_CRYPTO_PRICE_MAP = {} # DATE: {TICKER: PRICE}
+
 class PortfolioDisplayerUtil:
     def __init__(self, db_name="portfolio.db", debug=False):
         self.conn = sqlite3.connect(db_name)
@@ -81,9 +83,18 @@ class PortfolioDisplayerUtil:
         """
         # Check if the ticker and date already exist in the daily_prices table
         query = "SELECT price FROM daily_prices WHERE ticker = ? AND date = ?"
+
+        # if ticker is crypto and date is in TEMP_CRYPTO_PRICE_MAP, return the price
+        if ticker in CRYPTO_TICKERS and date in TEMP_CRYPTO_PRICE_MAP:
+            if ticker in TEMP_CRYPTO_PRICE_MAP[date]:
+                return TEMP_CRYPTO_PRICE_MAP[date][ticker]
+
+        # if ticker is not crypto, check the db
         result = self.conn.execute(query, (ticker, date)).fetchone()
         if result:
             return result[0]
+        
+        # fetch the price from Yahoo Finance
         try:
             date_obj = datetime.strptime(date, "%Y-%m-%d")
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -170,11 +181,18 @@ class Util:
         """
         从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
         """
+        # if ticker is crypto and date is in TEMP_CRYPTO_PRICE_MAP, return the price
+        if ticker in CRYPTO_TICKERS and date in TEMP_CRYPTO_PRICE_MAP:
+            if ticker in TEMP_CRYPTO_PRICE_MAP[date]:
+                return TEMP_CRYPTO_PRICE_MAP[date][ticker]
+        
         # Check if the ticker and date already exist in the daily_prices table
         query = "SELECT price FROM daily_prices WHERE ticker = ? AND date = ?"
         result = db_conn.execute(query, (ticker, date)).fetchone()
         if result:
             return result[0]
+    
+        # fetch the price from Yahoo Finance
         try:
             Util.log(f"Fetching price for {ticker} on {date}...")
             date_obj = datetime.strptime(date, "%Y-%m-%d")
@@ -182,7 +200,7 @@ class Util:
             end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
             Util.log(f"start_date: {start_date}, end_date: {end_date}")
 
-            Util.log(f"Fetching price for {ticker} on {date}...")
+            print(f"Fetching price for {ticker} on {date}...")
             # yf.download [start_date, end_date), start_date is included, end_date is excluded
             # https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html#yfinance.download
             history = yf.download(ticker, start_date, end_date)
@@ -214,6 +232,10 @@ class Util:
                                             (date, ticker, last_valid_price))
                     else:
                         Util.log(f"Today is not closed yet, will not save the price data for {ticker} on {date}")
+                        # update the TEMP_CRYPTO_PRICE_MAP
+                        if date not in TEMP_CRYPTO_PRICE_MAP:
+                            TEMP_CRYPTO_PRICE_MAP[date] = {}
+                        TEMP_CRYPTO_PRICE_MAP[date][ticker] = last_valid_price
                 else:
                     is_market_open = Util.is_market_open(date)
                     if is_market_open == False:

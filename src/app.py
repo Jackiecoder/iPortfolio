@@ -1,7 +1,7 @@
 #!/usr/local/bin/python3 
 from app_util import *
 
-yyyy_mm_dd = [ ("2024", "12", "16")]
+yyyy_mm_dd = [ ("2024", "12", "17")]
 
 def main():
     print("Welcome to Portfolio Manager")
@@ -21,6 +21,7 @@ def main():
     view_database()
 
     # test()
+
 
 if __name__ == "__main__":
     main()
