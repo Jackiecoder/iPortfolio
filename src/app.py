@@ -1,15 +1,16 @@
 #!/usr/local/bin/python3 
 from app_util import *
 
-yyyy_mm_dd = [ ("2024", "12", "17")]
-
 def main():
     print("Welcome to Portfolio Manager")
     '''Load Transactions from CSV'''
     load_transactions()
 
+    '''Download Database from SQLite'''
+    view_database()
+
     '''Show ROR'''
-    display_portfolio_ror(yyyy_mm_dd)
+    display_portfolio_ror("")
     
     '''Plot line Chart'''
     plot_line_chart()
@@ -17,8 +18,15 @@ def main():
     '''Show Ticker ROR'''
     plot_ticker_line_chart()
 
-    '''Download Database from SQLite'''
-    view_database()
+
+    # ======================================
+    # Historical Line Chart and RoR table
+    # ======================================
+    '''Show historical RoR table'''
+    # display_historical_portfolio_ror()
+
+    '''Plot Historical Line Chart'''
+    # plot_historical_line_chart()
 
     # test()
 

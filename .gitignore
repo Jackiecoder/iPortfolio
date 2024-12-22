@@ -1,7 +1,6 @@
-transactions
+input_transactions/
 __pycache__
 portfolio.db
-transactions
 results
 text.txt
 .DS_Store

@@ -3,9 +3,10 @@ from databaseViewer import DatabaseViewer
 from portfolioPlotter import Plotter
 from portfolioDisplayer import Displayer
 from portfolioTickerPlotter import TickerRORPlotter
-from portfolioDisplayer_util import PortfolioDisplayerUtil
+from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
 from const import *
 from const_private import *
+from datetime import datetime
 
 def load_transactions():
     clear_table()
@@ -44,9 +45,30 @@ def plot_line_chart():
     pt = Plotter()
     for date_str, (date_num, date_unit) in DATES.items():
         print(f"Plotting line chart for {date_str}...")
-        pt.plot_line_chart(file_name= f"{CHART_PATH}portfolio_line_chart_{date_unit}_{date_str}.png", 
-                           time_period=date_num, 
-                           time_str=date_str)
+        pt.plot_line_chart_ends_at_today(file_name= f"{CHART_PATH}portfolio_line_chart_{date_unit}_{date_str}.png", 
+                                        time_period=date_num, 
+                                        time_str=date_str)
+
+def display_historical_portfolio_ror():
+    print(f"{title_line} Displaying historical portfolio ror... {title_line}")
+    # dates = [("2023", "12", "31"), ("2022", "12", "31"), ("2021", "12", "31")]
+    dates = [("2024", "11", "01"),("2024", "10", "01"), ("2024", "09", "01"), ("2024", "08", "01"), ("2024", "07", "01"), ("2024", "06", "01"), ("2024", "05", "01"), ("2024", "04", "01"), ("2024", "03", "01"), ("2024", "02", "01"), ("2024", "01", "01")]
+    display_portfolio_ror(dates)
+
+
+def plot_historical_line_chart():
+    print(f"{title_line} Plotting historical line chart... {title_line}")
+    pt = Plotter()
+    dates = ["2023-12-31", "2022-12-31", "2021-12-31"]
+    for date in dates:
+        date_dt = datetime.strptime(date, "%Y-%m-%d")
+        date_num, date_str = "YTD", "YTD"
+        pt.plot_line_chart(file_name=f"{CHART_PATH}portfolio_line_chart_{date}_{date_str}.png",
+                                        end_date=date_dt,
+                                        time_period=date_num,
+                                        time_str=date_str)  
+    
+
 
 def plot_ticker_line_chart():
     print(f"{title_line} Plotting ticker line chart... {title_line}")
@@ -63,6 +85,11 @@ def plot_ticker_line_chart():
                                     time_str=date_str)
 
 def display_portfolio_ror(yyyy_mm_dd):
+    if not yyyy_mm_dd:
+        # get today's date
+        today = Util.get_today_est_str()
+        yyyy_mm_dd = [today.split("-")]
+
     print(f"{title_line} Displaying portfolio ror... {title_line}")
     pd = Displayer()
     for yyyy, mm, dd in yyyy_mm_dd:
@@ -70,11 +97,11 @@ def display_portfolio_ror(yyyy_mm_dd):
         ror_df, summary_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
         print("Generating rate of return chart...")
         pd.save_df_as_png(df = ror_df, 
-                          filename=ROR_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Total_RoR.png",
+                          filename=ROR_TOTAL_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Total.png",
                           title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
         print("Generating portfolio summary...")
         pd.save_df_as_png(df = summary_df, 
-                          filename=ROR_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Summary.png",
+                          filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Summary.png",
                           title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
 
     pd.close()

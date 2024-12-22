@@ -218,7 +218,7 @@ class Displayer(PortfolioDisplayerUtil):
 
 
     def calculate_rate_of_return_v2(self, date):
-        tickers = self.get_all_tickers()
+        tickers = Util.get_tickers_before_date(self.conn, date)
         ror_data = []
         total_cost, total_value, total_unrealized_gain, total_realized_gain, total_profit = 0, 0, 0, 0, 0
 
@@ -361,7 +361,7 @@ class Displayer(PortfolioDisplayerUtil):
         # 合并 total_cost == 0 和 total_value == 0 的记录为一行 "Other"
         other_df = summary_df[(summary_df["Total Cost"] == 0) & (summary_df["Total Value"] == 0)]
         if not other_df.empty:
-            other_row = other_df.sum(numeric_only=True)
+            other_row = other_df.sum(numeric_only=True).round(2)
             other_row["Ticker"] = "Other"
             other_row["Rate of Return (%)"] = None
             other_row["Portfolio (%)"] = None

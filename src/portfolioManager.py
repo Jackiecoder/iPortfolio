@@ -7,13 +7,13 @@ import pytz
 import os
 import matplotlib.dates as mdates
 from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
-
+from const import *
 
 class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
-        self.stock_splits = self.load_stock_splits('transactions/stock_split.csv')
+        self.stock_splits = self.load_stock_splits(f'{TRANSACTIONS_PATH}stock_split.csv')
 
     def create_tables(self):
         with self.conn:
@@ -84,14 +84,18 @@ class PortfolioManager:
                 if ticker not in stock_splits:
                     stock_splits[ticker] = []
                 stock_splits[ticker].append((date, float(before_split), float(after_split)))
+        Util.log(f"Loaded stock splits: {stock_splits}")
         return stock_splits
 
     def adjust_quantity_for_splits(self, ticker, old_date, new_date, old_quantity, old_cost_basis):
         if ticker in self.stock_splits:
             for split_date, before_split, after_split in sorted(self.stock_splits[ticker]):
                 if (old_date == 0 or old_date < split_date) and new_date >= split_date:
+                    Util.log(f"Adjusting quantity for split: {ticker}, {split_date}, {before_split}, {after_split}")
+                    Util.log(f"Old quantity: {old_quantity}, old cost basis: {old_cost_basis}, old date: {old_date}, new date: {new_date}")
                     old_quantity *= (after_split / before_split)
                     old_cost_basis /= (after_split / before_split)
+
         return old_quantity, old_cost_basis
 
     def add_transaction(self, date, ticker, cost, quantity, source):
@@ -142,7 +146,6 @@ class PortfolioManager:
             self.update_stock_data(date, ticker, cost, quantity)
             self.update_future_cost_basis_and_quantity(date, ticker, cost, quantity)
 
-
     def update_stock_data(self, date, ticker, cost_new, quantity_new):
         # calculate cost_basis and total_quantity
         # if cost <= 0, means dividend or sell, only quantity will be recalculated
@@ -151,6 +154,7 @@ class PortfolioManager:
         #   quantity must > 0
         if (cost_new <= 0 and quantity_new > 0) or (cost_new > 0 and quantity_new <= 0):
             print("Invalid transaction")
+            print(f"date: {date}, ticker: {ticker}, cost: {cost_new}, quantity: {quantity_new}")
             return 
 
         row = self.conn.execute("SELECT cost_basis, total_quantity, date FROM stock_data WHERE ticker = ? AND date <= ? ORDER BY date DESC LIMIT 1",
@@ -184,7 +188,6 @@ class PortfolioManager:
 
         self.conn.execute("INSERT OR REPLACE INTO stock_data (date, ticker, cost_basis, total_quantity) VALUES (?, ?, ?, ?)",
                             (date, ticker, cost_basis, quantity))
-
 
     def update_realized_gains(self, date, ticker, gain, quantity):
         # Fetch the latest cost_basis from stock_data
@@ -379,7 +382,6 @@ class PortfolioManager:
 
         print(f"Successfully loaded transactions from {source}.")
 
-
     def load_daily_cash_from_csv(self, file_path):
         """
         从 CSV 文件加载每日现金余额。
@@ -389,8 +391,7 @@ class PortfolioManager:
             for row in reader:
                 date, _, cash_balance, _ = row  # 假设格式为 yyyy-mm-dd, cash, amount, 1
                 self.set_daily_cash(date, float(cash_balance))
-        print(f"All daily cash balances from {file_path} have been loaded.")
-
+        print(f"Successfully loaded daily cash from {file_path}")
 
     def load_transactions_from_folder(self, folder_path):
         """
@@ -405,7 +406,7 @@ class PortfolioManager:
         for file_name in os.listdir(folder_path):
             if file_name.endswith('.csv') and file_name != 'demo_msft.csv':
                 file_path = os.path.join(folder_path, file_name)
-                print(f"Loading transactions from file: {file_name}")
+                Util.log(f"Loading transactions from file: {file_name}")
                 self.load_transactions_from_csv(file_path)
 
     def clear_table(self, table_name):
@@ -421,4 +422,3 @@ class PortfolioManager:
             print(f"All data from table '{table_name}' has been cleared.")
         except sqlite3.Error as e:
             print(f"Error clearing table '{table_name}': {e}")
-

@@ -85,6 +85,7 @@ class TickerRORPlotter:
         plt.tight_layout()
         # plt.savefig(file_name)
         plt.show()
+        plt.close()
 
     def plot_all_tickers(self):
         tickers = self.get_all_tickers()

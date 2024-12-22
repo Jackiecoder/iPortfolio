@@ -1,12 +1,18 @@
 # input data    
-TRANSACTIONS_PATH = "transactions/"
-CASH_PATH = "transactions/cash/cash.csv"
+TRANSACTIONS_PATH = "input_transactions/"
+CASH_PATH = f"{TRANSACTIONS_PATH}cash/cash.csv"
 
 # output data
-ROR_TABLE_PATH = "results/ror_table/"
-CHART_PATH = "results/line_charts/"
-DBVIEWER_PATH = "results/dbviewer/"
-TICKER_CHART_PATH = "results/ticker_line_chart/"
+OUTPUT_PATH = "results/"
+ROR_TABLE_PATH = f"{OUTPUT_PATH}ror_table/"
+ROR_TOTAL_TABLE_PATH = f"{ROR_TABLE_PATH}ror_total_table/"
+ROR_SUMMARY_TABLE_PATH = f"{ROR_TABLE_PATH}ror_summary_table/"
+CHART_PATH = f"{OUTPUT_PATH}plot_line_chart/"
+DBVIEWER_PATH = f"{OUTPUT_PATH}dbviewer/"
+TICKER_CHART_PATH = f"{OUTPUT_PATH}plot_ticker_line_chart/"
+
+# plotter
+NUM_OF_PLOT = 16
 
 # date match
 DATES = {

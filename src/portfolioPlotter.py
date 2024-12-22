@@ -4,7 +4,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
 from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
-
+from const import *
 
 class Plotter:
     def __init__(self, db_name="portfolio.db"):
@@ -99,8 +99,9 @@ class Plotter:
         plt.tight_layout()
         plt.savefig(file_name)
         plt.show()
+        plt.close()
 
-    def plot_line_chart(self, file_name, time_period, time_str, number_of_points=15):
+    def plot_line_chart(self, file_name, end_date, time_period, time_str, number_of_points=NUM_OF_PLOT):
         # dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
@@ -109,15 +110,14 @@ class Plotter:
 
         # calculate dates from ytd
         if time_period == "YTD":
-            time_period = Util.calculate_ytd_date_delta()
+            time_period = Util.calculate_ytd_date_delta(end_date)
 
         # 获取所有出现过的ticker列表
         tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
 
         # Get dates
-        today = Util.get_today_est_dt()
-        dates = Util.get_evenly_spaced_dates(start_date = today - timedelta(days=time_period),
-                                                                end_date=today,
+        dates = Util.get_evenly_spaced_dates(start_date = end_date - timedelta(days=time_period),
+                                                                end_date=end_date,
                                                                 num_dates=number_of_points)
         for i, date in enumerate(dates):
             day_profit = 0
@@ -152,6 +152,9 @@ class Plotter:
             latest_cost = total_costs[-1]
 
         self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name, time_str)
+
+    def plot_line_chart_ends_at_today(self, file_name, time_period, time_str, number_of_points=NUM_OF_PLOT):
+        self.plot_line_chart(file_name, Util.get_today_est_dt(), time_period, time_str, number_of_points)
 
     def plot_asset_value_vs_cost_util(self, latest_cost, total_profits, dates, file_name, time_str):
         '''
@@ -189,8 +192,9 @@ class Plotter:
         plt.tight_layout()
         plt.savefig(file_name)
         plt.show()
+        plt.close()
 
-    def plot_ticker_line_chart(self, file_name, ticker, time_period, time_str, number_of_points=15):
+    def plot_ticker_line_chart(self, file_name, ticker, time_period, time_str, number_of_points=NUM_OF_PLOT):
         # dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
         total_values = []
         total_costs = []
@@ -199,7 +203,7 @@ class Plotter:
 
         # calculate dates from ytd
         if time_period == "YTD":
-            time_period = Util.calculate_ytd_date_delta()
+            time_period = Util.calculate_ytd_date_delta_ends_today()
 
         # Get dates
         today = Util.get_today_est_dt()
@@ -219,8 +223,9 @@ class Plotter:
                 emtpy_dates.append(date)
                 continue
 
-            price = pdu.fetch_and_store_price(ticker=ticker,
-                                            date=date)
+            price = Util.fetch_and_store_price(db_conn=self.conn,
+                                                ticker=ticker,
+                                                date=date)
 
             value = price * quantity
             cost = cost_basis * quantity
@@ -237,7 +242,6 @@ class Plotter:
         # print(len(total_profits), len(dates))
 
         self.plot_asset_value_vs_cost_util(latest_cost, total_profits, dates, file_name, time_str)
-
 
     def close(self):
         self.conn.close()
