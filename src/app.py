@@ -10,7 +10,7 @@ def main():
     view_database()
 
     '''Show ROR'''
-    display_portfolio_ror("")
+    display_portfolio_ror("", previous_range=3)
     
     '''Plot line Chart'''
     plot_line_chart()

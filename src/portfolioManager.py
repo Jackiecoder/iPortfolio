@@ -357,30 +357,34 @@ class PortfolioManager:
         """
         从 CSV 文件加载交易记录，并将同一天的交易合并。
         """
-        transactions = {}
-        source = os.path.splitext(os.path.basename(file_path))[0]
+        try:
+            transactions = {}
+            source = os.path.splitext(os.path.basename(file_path))[0]
 
-        # 读取 CSV 文件并合并同一天的交易
-        with open(file_path, newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                date, ticker, cost, quantity = row
-                cost = float(cost)
-                quantity = float(quantity)
-                key = (date, ticker, source)  # 以 (日期, 股票代码) 作为唯一键
+            # 读取 CSV 文件并合并同一天的交易
+            with open(file_path, newline='') as csvfile:
+                reader = csv.reader(csvfile)
+                for row in reader:
+                    date, ticker, cost, quantity = row
+                    cost = float(cost)
+                    quantity = float(quantity)
+                    key = (date, ticker, source)  # 以 (日期, 股票代码) 作为唯一键
 
-                if key in transactions:
-                    # 合并同一天的交易
-                    transactions[key]['cost'] += cost
-                    transactions[key]['quantity'] += quantity
-                else:
-                    transactions[key] = {'cost': cost, 'quantity': quantity}
+                    if key in transactions:
+                        # 合并同一天的交易
+                        transactions[key]['cost'] += cost
+                        transactions[key]['quantity'] += quantity
+                    else:
+                        transactions[key] = {'cost': cost, 'quantity': quantity}
 
-        # 插入合并后的交易
-        for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
-            self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
+            # 插入合并后的交易
+            for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
+                self.add_transaction(date, ticker, data['cost'], data['quantity'], source)
 
-        print(f"Successfully loaded transactions from {source}.")
+            print(f"Successfully loaded transactions from {source}.")
+            
+        except Exception as e:
+            exit(f"Error reading CSV file {file_path}: {e}")
 
     def load_daily_cash_from_csv(self, file_path):
         """

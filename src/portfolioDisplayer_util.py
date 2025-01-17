@@ -230,7 +230,7 @@ class Util:
                             db_conn.execute("INSERT OR REPLACE INTO daily_prices (date, ticker, price) VALUES (?, ?, ?)",
                                             (date, ticker, last_valid_price))
                     else:
-                        Util.log(f"Today is not closed yet, will not save the price data for {ticker} on {date}")
+                        Util.log(f"Today is not closed yet, will not save the price data ({last_valid_price}) for {ticker} on {date}")
                         # update the TEMP_PRICE_MAP
                         if date not in TEMP_PRICE_MAP:
                             TEMP_PRICE_MAP[date] = {}
@@ -332,6 +332,7 @@ class Util:
     def is_market_open(date, market="NYSE"):
         """
         Check if the given date is a market open day.
+        Note: 2025-01-09 is closed.
 
         Parameters:
             date (str): The date in 'YYYY-MM-DD' format to check.
@@ -340,6 +341,8 @@ class Util:
         Returns:
             bool: True if the market is open on the given date, False otherwise.
         """
+        if date == "2025-01-09":
+            return False
         try:
             # Parse the input date
             date = pd.Timestamp(date)

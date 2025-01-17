@@ -32,3 +32,4 @@ title_line = "=============================="
 
 # Debug mode
 DBUG = False
+DIYSWITCH = True

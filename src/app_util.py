@@ -6,7 +6,7 @@ from portfolioTickerPlotter import TickerRORPlotter
 from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
 from const import *
 from const_private import *
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def load_transactions():
     clear_table()
@@ -59,7 +59,7 @@ def display_historical_portfolio_ror():
 def plot_historical_line_chart():
     print(f"{title_line} Plotting historical line chart... {title_line}")
     pt = Plotter()
-    dates = ["2023-12-31", "2022-12-31", "2021-12-31"]
+    dates = ["2023-12-31", "2022-12-31", "2021-12-31", "2024-12-31"]
     for date in dates:
         date_dt = datetime.strptime(date, "%Y-%m-%d")
         date_num, date_str = "YTD", "YTD"
@@ -73,10 +73,12 @@ def plot_historical_line_chart():
 def plot_ticker_line_chart():
     print(f"{title_line} Plotting ticker line chart... {title_line}")
     pt = Plotter()
-    ticker = [STOCK_TICKERS[0], CRYPTO_TICKERS[0], CRYPTO_TICKERS[1]]
+    ticker = [STOCK_TICKERS[0], CRYPTO_TICKERS[0], CRYPTO_TICKERS[1], CRYPTO_TICKERS[2]]
     dates = ["1M", "3M", "6M"]
     for ticker in ticker:
         for date_str in dates:
+            if DIYSWITCH == True and ticker == CRYPTO_TICKERS[2] and date_str != "1M":
+                continue
             print(f"Plotting line chart for {ticker} {date_str}")
             date_num, date_unit = DATES[date_str]
             pt.plot_ticker_line_chart(file_name=f"{TICKER_CHART_PATH}{ticker}_{date_unit}_{date_str}.png",
@@ -84,13 +86,25 @@ def plot_ticker_line_chart():
                                     time_period=date_num,
                                     time_str=date_str)
 
-def display_portfolio_ror(yyyy_mm_dd):
-    if not yyyy_mm_dd:
-        # get today's date
-        today = Util.get_today_est_str()
-        yyyy_mm_dd = [today.split("-")]
-
+def display_portfolio_ror(yyyy_mm_dd, previous_range = 2):
     print(f"{title_line} Displaying portfolio ror... {title_line}")
+    if yyyy_mm_dd:
+        display_portfolio_ror_util(yyyy_mm_dd)
+
+    if not yyyy_mm_dd:
+        today = Util.get_today_est_dt()
+        days = [today - timedelta(days=i) for i in range(previous_range)]
+        Util.log(days)
+        for day in days:
+            print(f"Generating portfolio snapshot for {day.strftime('%Y-%m-%d')}...")
+            yyyy_mm_dd = [day.strftime("%Y-%m-%d").split("-")]
+            display_portfolio_ror_util(yyyy_mm_dd)
+
+def display_portfolio_ror_util(yyyy_mm_dd):
+    if not yyyy_mm_dd:
+        print(f"Invalid date: {yyyy_mm_dd}")
+        return
+
     pd = Displayer()
     for yyyy, mm, dd in yyyy_mm_dd:
         print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
