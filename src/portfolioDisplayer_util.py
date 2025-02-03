@@ -383,4 +383,13 @@ class Util:
         result = db_conn.execute(query, (date,)).fetchall()
         return [row[0] for row in result]
     
-
+    @staticmethod
+    def get_categories():
+        return CATEGORIES
+    
+    @staticmethod
+    def get_cat_for_ticker(ticker):
+        for cat, tickers in CATEGORIES.items():
+            if ticker in tickers:
+                return cat
+        raise ValueError(f"Ticker {ticker} not found in any category.")

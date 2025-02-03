@@ -89,7 +89,7 @@ class Displayer(PortfolioDisplayerUtil):
             # 保留两位小数
             latest_price = round(latest_price, 2)
             cost_basis = round(cost_basis, 2)
-            total_quantity_ticker = round(total_quantity_ticker, 2)
+            total_quantity_ticker = round(total_quantity_ticker, 3) # 3 位小数
             total_value_ticker = round(total_value_ticker, 2)
             total_cost_ticker = round(total_cost_ticker, 2)
             profit = round(profit, 2) if profit is not None else None
@@ -269,7 +269,7 @@ class Displayer(PortfolioDisplayerUtil):
                 "Ticker": ticker,
                 "Latest Price": round(todays_price, 2),
                 "Ave Cost Basis": round(cost_basis, 2),
-                "Total Holding": round(quantity_ticker, 2),
+                "Total Holding": round(quantity_ticker, 3), # 3 位小数
                 "Total Value": round(total_value_ticker, 2),
                 "Total Cost": round(total_cost_ticker, 2),
                 "Unrealized Gain": round(unrealized_gain, 2),
@@ -349,6 +349,9 @@ class Displayer(PortfolioDisplayerUtil):
             df[df["Ticker"] == "Total (w/o Cash)"]
         ], ignore_index=True)
 
+        
+        ### ===== summary df =========
+
         # 简化版表格
         summary_df = sorted_df[["Ticker", 
                                 "Portfolio (%)", 
@@ -357,7 +360,7 @@ class Displayer(PortfolioDisplayerUtil):
                                 "Total Profit",
                                 "Rate of Return (%)",
                                 "Annualized RoR (%)"]]
-
+        
         # 合并 total_cost == 0 和 total_value == 0 的记录为一行 "Other"
         other_df = summary_df[(summary_df["Total Cost"] == 0) & (summary_df["Total Value"] == 0)]
         if not other_df.empty:
@@ -369,14 +372,64 @@ class Displayer(PortfolioDisplayerUtil):
             summary_df = summary_df[(summary_df["Total Cost"] != 0) | (summary_df["Total Value"] != 0)]
             other_row_df = pd.DataFrame([other_row]).dropna(axis=1, how='all')  # 排除所有空或全为 NA 的列
             summary_df = pd.concat([summary_df, other_row_df], ignore_index=True)
-
+        
         # 按 Portfolio (%) 降序排序，保留 Total 行在最后
         summary_df = pd.concat([
             summary_df[summary_df["Ticker"] != "Total (w/o Cash)"].sort_values(by="Portfolio (%)", ascending=False),
             summary_df[summary_df["Ticker"] == "Total (w/o Cash)"]
         ], ignore_index=True)
 
-        return sorted_df, summary_df
+        ### ===== category df =========
+        # 获取每个 ticker 的分类
+        ticker_categories = Util.get_categories()
+
+        # 初始化分类数据
+        cat_data = {}
+
+        for row in summary_df.itertuples(index=False):
+            if row.Ticker == "Total (w/o Cash)":
+                continue
+            ticker = row.Ticker
+            category = Util.get_cat_for_ticker(ticker)
+
+            if category not in cat_data:
+                cat_data[category] = {
+                    "Portfolio (%)": 0,
+                    "Total Value": 0,
+                    "Total Cost": 0,
+                    "Total Profit": 0,
+                    "Rate of Return (%)": None,
+                    "Annualized RoR (%)": None
+                }
+
+            cat_data[category]["Portfolio (%)"] += row._1 if row._1 else 0
+            cat_data[category]["Total Value"] += row._2 if row._2 else 0
+            cat_data[category]["Total Cost"] += row._3 if row._3 else 0
+            cat_data[category]["Total Profit"] += row._4 if row._4 else 0
+
+        # 保留两位小数
+        for category, data in cat_data.items():
+            for key in data:
+                if data[key] is not None:
+                    data[key] = round(data[key], 2)
+
+        # 计算分类的收益率和年化收益率
+        for category, data in cat_data.items():
+            if data["Total Cost"] > 0:
+                data["Rate of Return (%)"] = ((data["Total Value"] / data["Total Cost"]) - 1) * 100
+                data["Annualized RoR (%)"] = self.calculate_annualized_return(overall_first_date, overall_last_date, data["Total Value"], data["Total Cost"])
+
+                data["Rate of Return (%)"] = round(data["Rate of Return (%)"], 2) if data["Rate of Return (%)"] is not None else None
+                data["Annualized RoR (%)"] = round(data["Annualized RoR (%)"], 2) if data["Annualized RoR (%)"] is not None else None
+
+        # 转换为 DataFrame
+        cat_df = pd.DataFrame.from_dict(cat_data, orient='index').reset_index().rename(columns={"index": "Category"})
+
+        # 按 Portfolio (%) 降序排序
+        cat_df = cat_df.sort_values(by="Portfolio (%)", ascending=False).reset_index(drop=True)
+
+
+        return sorted_df, summary_df, cat_df
         
 
     def save_df_as_png(self, df, filename, title=""):

@@ -108,7 +108,7 @@ def display_portfolio_ror_util(yyyy_mm_dd):
     pd = Displayer()
     for yyyy, mm, dd in yyyy_mm_dd:
         print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
-        ror_df, summary_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
+        ror_df, summary_df, cat_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
         print("Generating rate of return chart...")
         pd.save_df_as_png(df = ror_df, 
                           filename=ROR_TOTAL_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Total.png",
@@ -118,6 +118,10 @@ def display_portfolio_ror_util(yyyy_mm_dd):
                           filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Summary.png",
                           title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
 
+        print("Generating category summary...")
+        pd.save_df_as_png(df = cat_df, 
+                          filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Category.png",
+                          title=f"Portfolio Category {yyyy}-{mm}-{dd}")
     pd.close()
 
 def display_ticker_ror():
