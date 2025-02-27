@@ -246,7 +246,7 @@ class Displayer(PortfolioDisplayerUtil):
                 total_profit += realized_gain
                 continue
 
-            todays_price = Util.fetch_and_store_price(db_conn=self.conn, ticker=ticker, date=date)
+            todays_price = Util.fetch_and_store_price(db_conn=self.conn, ticker=ticker, date=date) 
             cost_basis = self.get_cost_basis(ticker=ticker, date=date)
             total_value_ticker = quantity_ticker * todays_price
             total_cost_ticker = cost_basis * quantity_ticker

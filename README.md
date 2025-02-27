@@ -34,6 +34,8 @@ e.g.
 ```2025-03-13,MSFT,-83.00,0``` means receiving 83 dollars dividends from MSFT at 2025-03-13
 
 ## Execute 
+`docker-compose build`
+
 `docker-compose up -d`
 
 `docker-compose exec app /bin/bash`
@@ -41,3 +43,4 @@ e.g.
 `./app.py`
 
 ## TODO  
+1. Total period should be the holding period. e.g. holding stock A from day1 to day10, and then from day100 to day110. Then total period should be 20 days, instead of 110 days. 

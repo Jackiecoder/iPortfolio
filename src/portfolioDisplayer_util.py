@@ -199,10 +199,12 @@ class Util:
             start_date = (date_obj - timedelta(days=7)).strftime("%Y-%m-%d")
             end_date = (date_obj + timedelta(days=1)).strftime("%Y-%m-%d")
             Util.log(f"start_date: {start_date}, end_date: {end_date}")
-
+            # ticker = "VOO"
             # yf.download [start_date, end_date), start_date is included, end_date is excluded
             # https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html#yfinance.download
-            history = yf.download(ticker, start_date, end_date)
+            Util.log(f"Fetching price for {ticker} on {start_date} to {end_date}")
+            history = yf.download(ticker, start=start_date, end=end_date)
+            Util.log(f"history: {history}")
             if not history.empty:
                 # Get the last valid price and date
                 # Util.log(f"hitory: {history}")

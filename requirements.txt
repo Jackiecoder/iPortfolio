@@ -1,4 +1,4 @@
-yfinance
+yfinance>=0.2.54
 matplotlib
 tabulate
 pandas_market_calendars
