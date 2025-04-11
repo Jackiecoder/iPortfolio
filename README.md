@@ -44,3 +44,32 @@ e.g.
 
 ## TODO  
 1. Total period should be the holding period. e.g. holding stock A from day1 to day10, and then from day100 to day110. Then total period should be 20 days, instead of 110 days. 
+
+
+## Table design
+### Transactions
+| Date | Ticker | Source | Cost | Quantity | Cost Basis
+| --- | ---     | -       | -     | -       |  -
+| 2024-01-01 | MSFT | FilePath | 600 | 3 | 200
+| 2024-01-10 | MSFT | FilePath | 500 | 2 | 250
+
+### Daily Cash
+| Date | Cash Balance
+| --- | ---     | 
+| 2024-01-01 | 5,000 | 
+
+### Daily Prices
+| Date | Ticker | Price |
+| --- | ---     |  -- | 
+| 2024-02-01 | MSFT | 210.00 | 
+
+### Stock Data
+| Date | Ticker | Cost Basis | Quantity | 
+| -- | -- | -- | -- |
+| 2024-01-01 | MSFT | FilePath | 200 | 3 
+| 2024-01-10 | MSFT | FilePath | 220 | 2 
+
+### Realized Gain
+| Date | Ticker | Price |
+| --- | ---     |  -- | 
+| 2024-03-01 | XXX | 5000.00 | 

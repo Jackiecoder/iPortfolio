@@ -10,20 +10,23 @@ def main():
     view_database()
 
     '''Show ROR'''
-    display_portfolio_ror("", previous_range=3)
+    # display_portfolio_ror("", previous_range=3)
+
+    '''Show latest ror'''
+    display_portfolio_ror_latest()
     
     '''Plot line Chart'''
     plot_line_chart()
 
     '''Show Ticker ROR'''
-    plot_ticker_line_chart()
+    # plot_ticker_line_chart()
 
 
     # ======================================
     # Historical Line Chart and RoR table
     # ======================================
     '''Show historical RoR table'''
-    # display_historical_portfolio_ror()
+    display_historical_portfolio_ror()
 
     '''Plot Historical Line Chart'''
     # plot_historical_line_chart()

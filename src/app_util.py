@@ -1,9 +1,11 @@
 from portfolioManager import PortfolioManager
+from iPortfolio_dbloader import DbLoader
 from databaseViewer import DatabaseViewer
 from portfolioPlotter import Plotter
 from portfolioDisplayer import Displayer
 from portfolioTickerPlotter import TickerRORPlotter
-from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
+from iPortfolio_util import PortfolioDisplayerUtil, Util
+from util import Util
 from const import *
 from const_private import *
 from datetime import datetime, timedelta
@@ -11,11 +13,14 @@ from datetime import datetime, timedelta
 def load_transactions():
     clear_table()
     print(f"{title_line} Loading transactions... {title_line}")
-    pm = PortfolioManager()
+    db_loader = DbLoader()
     for cat in TRANSACTIONS_CATS:
-        pm.load_transactions_from_folder(TRANSACTIONS_PATH + cat + "/")
-    pm.load_daily_cash_from_csv(CASH_PATH)
-    pm.close()
+        db_loader.load_transactions_from_folder(TRANSACTIONS_PATH + cat + "/")
+    db_loader.load_daily_cash_from_csv(CASH_PATH)
+    db_loader.populate_transaction_db()
+    db_loader.verify_table_size()
+    db_loader.close()
+
 
 def view_database():
     print(f"{title_line} Saving database to CSV... {title_line}")
@@ -30,15 +35,20 @@ def view_database():
 def clear_table():
     print(f"{title_line} Clearing tables... {title_line}")
     # 初始化 PortfolioManager 并添加一些交易记录
-    portfolio = PortfolioManager()
-    # 清空 transactions 表
-    portfolio.clear_table("transactions")
-    # 清空 stock_data 表
-    portfolio.clear_table("stock_data")
-    # clear daily_cash table
-    portfolio.clear_table("daily_cash")
-    # clear daily_prices table
-    portfolio.clear_table("realized_gains")
+    # portfolio = PortfolioManager()
+    # # 清空 transactions 表
+    # portfolio.clear_table("transactions")
+    # # 清空 stock_data 表
+    # portfolio.clear_table("stock_data")
+    # # clear daily_cash table
+    # portfolio.clear_table("daily_cash")
+    # # clear daily_prices table
+    # portfolio.clear_table("realized_gains")
+    db_loader = DbLoader()
+    db_loader.clear_table("transactions")
+    db_loader.clear_table("stock_data")
+    db_loader.clear_table("daily_cash")
+    db_loader.clear_table("realized_gains")
 
 def plot_line_chart():
     print(f"{title_line} Plotting line chart... {title_line}")
@@ -51,10 +61,8 @@ def plot_line_chart():
 
 def display_historical_portfolio_ror():
     print(f"{title_line} Displaying historical portfolio ror... {title_line}")
-    # dates = [("2023", "12", "31"), ("2022", "12", "31"), ("2021", "12", "31")]
     dates = [("2024", "11", "01"),("2024", "10", "01"), ("2024", "09", "01"), ("2024", "08", "01"), ("2024", "07", "01"), ("2024", "06", "01"), ("2024", "05", "01"), ("2024", "04", "01"), ("2024", "03", "01"), ("2024", "02", "01"), ("2024", "01", "01")]
     display_portfolio_ror(dates)
-
 
 def plot_historical_line_chart():
     print(f"{title_line} Plotting historical line chart... {title_line}")
@@ -68,8 +76,6 @@ def plot_historical_line_chart():
                                         time_period=date_num,
                                         time_str=date_str)  
     
-
-
 def plot_ticker_line_chart():
     print(f"{title_line} Plotting ticker line chart... {title_line}")
     pt = Plotter()
@@ -122,6 +128,26 @@ def display_portfolio_ror_util(yyyy_mm_dd):
         pd.save_df_as_png(df = cat_df, 
                           filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Category.png",
                           title=f"Portfolio Category {yyyy}-{mm}-{dd}")
+    pd.close()
+
+def display_portfolio_ror_latest():
+    print(f"{title_line} Displaying today's portfolio ror... {title_line}")
+    pd = Displayer()
+    ror_df, summary_df, cat_df = pd.calculate_rate_of_return_latest()
+    yyyy, mm, dd = Util.get_today_est_str().split("-")
+    print(f"Generating rate of return chart for {yyyy}-{mm}-{dd}...")
+    pd.save_df_as_png(df = ror_df, 
+                      filename=ROR_TOTAL_TABLE_PATH + "9999-99-99_Total.png",
+                      title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
+    print(f"Generating portfolio summary for {yyyy}-{mm}-{dd}...")
+    pd.save_df_as_png(df = summary_df, 
+                        filename=ROR_SUMMARY_TABLE_PATH + f"9999-99-99_Summary.png",
+                        title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
+
+    print(f"Generating category summary for {yyyy}-{mm}-{dd}...")
+    pd.save_df_as_png(df = cat_df, 
+                        filename=ROR_SUMMARY_TABLE_PATH + f"9999-99-99_Category.png",
+                        title=f"Portfolio Category {yyyy}-{mm}-{dd}")
     pd.close()
 
 def display_ticker_ror():

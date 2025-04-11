@@ -3,7 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
-from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
+from iPortfolio_util import PortfolioDisplayerUtil, Util
+from util import Util
 
 class Displayer(PortfolioDisplayerUtil):
     def __init__(self, db_name="portfolio.db", debug=False):
@@ -215,7 +216,6 @@ class Displayer(PortfolioDisplayerUtil):
         ], ignore_index=True)
 
         return sorted_df, summary_df
-
 
     def calculate_rate_of_return_v2(self, date):
         tickers = Util.get_tickers_before_date(self.conn, date)
@@ -431,7 +431,6 @@ class Displayer(PortfolioDisplayerUtil):
 
         return sorted_df, summary_df, cat_df
         
-
     def save_df_as_png(self, df, filename, title=""):
         """
         将 DataFrame 保存为 PNG 文件。
@@ -476,3 +475,220 @@ class Displayer(PortfolioDisplayerUtil):
 
     def close(self):
         self.conn.close()
+
+    def calculate_rate_of_return_latest(self, date=Util.get_today_est_str()):
+        '''
+        This function calculates the rate of return based on the latest price of the stock.
+        '''
+        tickers = Util.get_tickers_before_date(self.conn, date)
+        ror_data = []
+        total_cost, total_value, total_unrealized_gain, total_realized_gain, total_profit = 0, 0, 0, 0, 0
+
+        for ticker in tickers:
+            quantity_ticker = self.get_stock_quantity(ticker=ticker, date=date)
+            if quantity_ticker == 0:
+                realized_gain = self.get_realized_gain(ticker, date=date)
+                ror_data.append({
+                    "Ticker": ticker,
+                    "Latest Price": None,
+                    "Ave Cost Basis": None,
+                    "Total Holding": None,
+                    "Total Value": 0,
+                    "Total Cost": 0,
+                    "Unrealized Gain": 0,
+                    "Realized Gain": round(realized_gain, 2),
+                    "Total Profit": round(realized_gain, 2),
+                    "Rate of Return (%)": None,
+                    "Portfolio (%)": None,
+                    "First Date": None,
+                    "Last Date": None,
+                    "Annualized RoR (%)": None
+                })
+                total_realized_gain += realized_gain
+                total_profit += realized_gain
+                continue
+
+            todays_price = Util.fetch_the_latest_price(ticker)
+            cost_basis = self.get_cost_basis(ticker=ticker, date=date)
+            total_value_ticker = quantity_ticker * todays_price
+            total_cost_ticker = cost_basis * quantity_ticker
+
+            if quantity_ticker == 0:
+                # No holding yet, skip this ticker
+                continue
+
+            unrealized_gain = total_value_ticker - total_cost_ticker
+            realized_gain = self.get_realized_gain(ticker, date=date)
+
+            profit = unrealized_gain + realized_gain
+            rate_of_return = ((total_value_ticker / total_cost_ticker) - 1) * 100 if total_cost_ticker > 0 else None
+
+            first_date, last_date = self.get_ticker_date_range(ticker)
+            last_date = min(date, last_date) if last_date else date
+            annualized_return = self.calculate_annualized_return(first_date, last_date, total_value_ticker, total_cost_ticker)
+
+            ror_data.append({
+                "Ticker": ticker,
+                "Latest Price": round(todays_price, 2),
+                "Ave Cost Basis": round(cost_basis, 2),
+                "Total Holding": round(quantity_ticker, 3), # 3 位小数
+                "Total Value": round(total_value_ticker, 2),
+                "Total Cost": round(total_cost_ticker, 2),
+                "Unrealized Gain": round(unrealized_gain, 2),
+                "Realized Gain": round(realized_gain, 2),
+                "Total Profit": round(profit, 2),
+                "Rate of Return (%)": round(rate_of_return, 2),
+                "Portfolio (%)": None,  # 后续计算
+                "First Date": first_date,
+                "Last Date": last_date,
+                "Annualized RoR (%)": round(annualized_return, 2)
+            })
+
+            # 累计总计数据
+            total_cost += total_cost_ticker
+            total_value += total_value_ticker
+            total_unrealized_gain += unrealized_gain
+            total_realized_gain += realized_gain
+            total_profit += profit
+
+        # Add cash to the total value
+        latest_cash = self.get_cash(date=date)
+
+        # Overall Total value
+        overall_first_date, overall_last_date = self.get_overall_date_range()
+        overall_last_date = min(date, overall_last_date) if overall_last_date else date
+        overall_annualized_return = self.calculate_annualized_return(overall_first_date, overall_last_date, total_value, total_cost)
+        total_rate_of_return = ((total_value / total_cost) - 1) * 100 if total_cost > 0 else None
+
+        # 添加 Portfolio (%) 列
+        for row in ror_data:
+            row["Portfolio (%)"] = round((row["Total Value"] / (total_value + latest_cash)) * 100, 2) if total_value > 0 else 0
+
+        # 添加 Cash 行
+        ror_data.append({
+            "Ticker": "Cash",
+            "Latest Price": None,
+            "Total Holding": None,
+            "Ave Cost Basis": None,
+            "Total Value": round(latest_cash, 2),
+            "Total Cost": None,
+            "Unrealized Gain": None,
+            "Realized Gain": None,
+            "Total Profit": None,
+            "Rate of Return (%)": None,
+            "Portfolio (%)": round((latest_cash / (total_value + latest_cash)) * 100, 2) if latest_cash > 0 else 0,
+            "First Date": None,
+            "Last Date": None,
+            "Annualized RoR (%)": None
+        })
+
+        ror_data.append({
+            "Ticker": "Total (w/o Cash)",
+            "Latest Price": None,
+            "Ave Cost Basis": None,
+            "Total Holding": None,
+            "Total Value": round(total_value, 2),
+            "Total Cost": round(total_cost, 2),
+            "Unrealized Gain": round(total_unrealized_gain, 2),
+            "Realized Gain": round(total_realized_gain, 2),
+            "Total Profit": round(total_profit, 2),
+            "Rate of Return (%)": round(total_rate_of_return, 2),
+            "Portfolio (%)": 100.0,  # 总计行为 100%
+            "First Date": overall_first_date,
+            "Last Date": overall_last_date,
+            "Annualized RoR (%)": round(overall_annualized_return, 2)
+        })
+
+        # 转换为 DataFrame
+        df = pd.DataFrame(ror_data)
+
+        # 确保 Profit 列为浮点数，并填充空值
+        df["Total Profit"] = pd.to_numeric(df["Total Profit"], errors='coerce').fillna(0)
+
+        # 按 Profit 降序排序，保留 "Total" 行在最后
+        sorted_df = pd.concat([
+            df[df["Ticker"] != "Total (w/o Cash)"].sort_values(by="Total Profit", ascending=False),
+            df[df["Ticker"] == "Total (w/o Cash)"]
+        ], ignore_index=True)
+
+
+        ### ===== summary df =========
+
+        # 简化版表格
+        summary_df = sorted_df[["Ticker", 
+                                "Portfolio (%)", 
+                                "Total Value",
+                                "Total Cost",
+                                "Total Profit",
+                                "Rate of Return (%)",
+                                "Annualized RoR (%)"]]
+        
+        # 合并 total_cost == 0 和 total_value == 0 的记录为一行 "Other"
+        other_df = summary_df[(summary_df["Total Cost"] == 0) & (summary_df["Total Value"] == 0)]
+        if not other_df.empty:
+            other_row = other_df.sum(numeric_only=True).round(2)
+            other_row["Ticker"] = "Other"
+            other_row["Rate of Return (%)"] = None
+            other_row["Portfolio (%)"] = None
+            other_row["Annualized RoR (%)"] = None
+            summary_df = summary_df[(summary_df["Total Cost"] != 0) | (summary_df["Total Value"] != 0)]
+            other_row_df = pd.DataFrame([other_row]).dropna(axis=1, how='all')  # 排除所有空或全为 NA 的列
+            summary_df = pd.concat([summary_df, other_row_df], ignore_index=True)
+        
+        # 按 Portfolio (%) 降序排序，保留 Total 行在最后
+        summary_df = pd.concat([
+            summary_df[summary_df["Ticker"] != "Total (w/o Cash)"].sort_values(by="Portfolio (%)", ascending=False),
+            summary_df[summary_df["Ticker"] == "Total (w/o Cash)"]
+        ], ignore_index=True)
+
+        ### ===== category df =========
+        # 获取每个 ticker 的分类
+        ticker_categories = Util.get_categories()
+
+        # 初始化分类数据
+        cat_data = {}
+
+        for row in summary_df.itertuples(index=False):
+            if row.Ticker == "Total (w/o Cash)":
+                continue
+            ticker = row.Ticker
+            category = Util.get_cat_for_ticker(ticker)
+
+            if category not in cat_data:
+                cat_data[category] = {
+                    "Portfolio (%)": 0,
+                    "Total Value": 0,
+                    "Total Cost": 0,
+                    "Total Profit": 0,
+                    "Rate of Return (%)": None,
+                    "Annualized RoR (%)": None
+                }
+
+            cat_data[category]["Portfolio (%)"] += row._1 if row._1 else 0
+            cat_data[category]["Total Value"] += row._2 if row._2 else 0
+            cat_data[category]["Total Cost"] += row._3 if row._3 else 0
+            cat_data[category]["Total Profit"] += row._4 if row._4 else 0
+
+        # 保留两位小数
+        for category, data in cat_data.items():
+            for key in data:
+                if data[key] is not None:
+                    data[key] = round(data[key], 2)
+
+        # 计算分类的收益率和年化收益率
+        for category, data in cat_data.items():
+            if data["Total Cost"] > 0:
+                data["Rate of Return (%)"] = ((data["Total Value"] / data["Total Cost"]) - 1) * 100
+                data["Annualized RoR (%)"] = self.calculate_annualized_return(overall_first_date, overall_last_date, data["Total Value"], data["Total Cost"])
+
+                data["Rate of Return (%)"] = round(data["Rate of Return (%)"], 2) if data["Rate of Return (%)"] is not None else None
+                data["Annualized RoR (%)"] = round(data["Annualized RoR (%)"], 2) if data["Annualized RoR (%)"] is not None else None
+
+        # 转换为 DataFrame
+        cat_df = pd.DataFrame.from_dict(cat_data, orient='index').reset_index().rename(columns={"index": "Category"})
+
+        # 按 Portfolio (%) 降序排序
+        cat_df = cat_df.sort_values(by="Portfolio (%)", ascending=False).reset_index(drop=True)
+
+
+        return sorted_df, summary_df, cat_df

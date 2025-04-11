@@ -71,8 +71,9 @@ class PortfolioDisplayerUtil:
             return 0
 
         query = """
-        SELECT SUM(gain) FROM realized_gains 
+        SELECT gain FROM realized_gains 
         WHERE ticker = ? AND date <= ?
+        ORDER BY date DESC LIMIT 1
         """
         result = self.conn.execute(query, (ticker, date)).fetchone()
         return result[0] if result[0] is not None else 0

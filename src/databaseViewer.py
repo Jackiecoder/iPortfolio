@@ -4,43 +4,65 @@ import pandas as pd
 
 class DatabaseViewer:
     def __init__(self, db_name="portfolio.db"):
-        # 初始化 SQLite 数据库连接
-        self.conn = sqlite3.connect(db_name)
+        try:
+            self.conn = sqlite3.connect(db_name)
+            print(f"Connected to database: {db_name}")
+        except sqlite3.Error as e:
+            print(f"Error connecting to database: {e}")
 
-    def fetch_data(self, query):
+    def verify_table_size(self):
+        with self.conn:
+            cursor = self.conn.execute("SELECT COUNT(*) FROM transactions")
+            count = cursor.fetchone()[0]
+            print(f"Number of records in transactions table: {count}")
+            cursor = self.conn.execute("SELECT COUNT(*) FROM stock_data")
+            count = cursor.fetchone()[0]
+            print(f"Number of records in stock_data table: {count}")
+            cursor = self.conn.execute("SELECT COUNT(*) FROM daily_cash")
+            count = cursor.fetchone()[0] 
+            print(f"Number of records in daily_cash table: {count}")
+            cursor = self.conn.execute("SELECT COUNT(*) FROM daily_prices")
+            count = cursor.fetchone()[0]
+            print(f"Number of records in daily_prices table: {count}")
+            cursor = self.conn.execute("SELECT COUNT(*) FROM realized_gains")
+            count = cursor.fetchone()[0]
+            print(f"Number of records in realized_gains table: {count}")
+
+    def _fetch_data(self, query):
         df = pd.read_sql_query(query, self.conn)
         return df
 
-    def save_tabulate_to_csv(self, query, keys, filename):
-        df = self.fetch_data(query)
+    def _save_tabulate_to_csv(self, query, keys, filename):
+        df = self._fetch_data(query)
+
         table = tabulate(df, headers=keys, tablefmt='pretty')
         with open(filename, 'w') as f:
             f.write(table)
 
     def save_transactions_to_csv(self, filename):
         query = "SELECT * FROM transactions ORDER BY date DESC"
-        keys = ["Date", "Ticker", "Source", "Cost", "Quantity"]
-        self.save_tabulate_to_csv(query, keys, filename)
+        keys = ["Date", "Ticker", "Source", "Cost", "Quantity", "Cost Basis"]
+        self._save_tabulate_to_csv(query, keys, filename)
 
     def save_stock_data_to_csv(self, filename):
         query = "SELECT * FROM stock_data ORDER BY date DESC"
         keys = ["Date", "Ticker", "Cost Basis", "Total Quantity"]
-        self.save_tabulate_to_csv(query, keys, filename)    
+        self._save_tabulate_to_csv(query, keys, filename)    
 
     def save_daily_cash_to_csv(self, filename):
         query = "SELECT * FROM daily_cash ORDER BY date DESC"
         keys = ["Date", "Cash Balance"]
-        self.save_tabulate_to_csv(query, keys, filename)
+        self._save_tabulate_to_csv(query, keys, filename)
 
     def save_daily_prices_to_csv(self, filename):
         query = "SELECT * FROM daily_prices ORDER BY date DESC"
         keys = ["Date", "Ticker", "Price"]
-        self.save_tabulate_to_csv(query, keys, filename)
+        self._save_tabulate_to_csv(query, keys, filename)
 
     def save_realized_gain_to_csv(self, filename):
         query = "SELECT * FROM realized_gains ORDER BY date DESC"
         keys = ["Date", "Ticker", "Gain"]
-        self.save_tabulate_to_csv(query, keys, filename)
+        self._save_tabulate_to_csv(query, keys, filename)
 
     def view_transactions(self):
         """按日期降序查看交易记录表的数据"""

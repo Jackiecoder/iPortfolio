@@ -6,14 +6,15 @@ import matplotlib.pyplot as plt
 import pytz
 import os
 import matplotlib.dates as mdates
-from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
+# from iPortfolio_util import PortfolioDisplayerUtil, Util
 from const import *
+from util import Util
 
 class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
-        self.stock_splits = self.load_stock_splits(f'{TRANSACTIONS_PATH}stock_split.csv')
+        self.stock_splits = self._load_stock_splits(f'{TRANSACTIONS_PATH}stock_split.csv')
 
     def create_tables(self):
         with self.conn:
@@ -75,7 +76,7 @@ class PortfolioManager:
                 )
             """)
 
-    def load_stock_splits(self, file_path):
+    def _load_stock_splits(self, file_path):
         stock_splits = {}
         with open(file_path, newline='') as csvfile:
             reader = csv.reader(csvfile)
@@ -253,16 +254,6 @@ class PortfolioManager:
             self.conn.execute("UPDATE stock_data SET cost_basis = ?, total_quantity = ? WHERE date = ? AND ticker = ?",
                               (cost_basis, quantity, future_date, ticker))
 
-    def get_previous_date(self, date_str):
-        date = datetime.strptime(date_str, "%Y-%m-%d")
-        previous_date = date - timedelta(days=1)
-        return previous_date.strftime("%Y-%m-%d")
-
-    def is_past_date(self, date_str):
-        date = datetime.strptime(date_str, "%Y-%m-%d")
-        today = Util.get_today_est_dt()
-        return date < today
-
     def fetch_and_store_latest_price(self, ticker):
         today = Util.get_today_est_str()
 
@@ -321,34 +312,6 @@ class PortfolioManager:
               """, (date,)).fetchone()
         cash_balance = cash_row[0] if cash_row else 0
         return cash_balance
-
-    # def print_all_holding(self):
-    #     dates = sorted(set(row[0] for row in self.conn.execute("SELECT date FROM transactions")))
-    #     tickers = set(row[0] for row in self.conn.execute("SELECT DISTINCT ticker FROM stock_data"))
-    #     date = dates[-1]
-
-    #     for ticker in tickers:
-    #         # 获取当天或最近的有效 cost_basis 和 quantity
-    #         row = self.conn.execute("""
-    #             SELECT cost_basis, total_quantity FROM stock_data
-    #             WHERE ticker = ? AND date <= ?
-    #             ORDER BY date DESC LIMIT 1
-    #         """, (ticker, date)).fetchone()
-
-    #         if row:
-    #             cost_basis, quantity = row
-
-    #             # 尝试从 daily_prices 表读取价格
-    #             price_row = self.conn.execute("""
-    #                 SELECT price FROM daily_prices WHERE date = ? AND ticker = ?
-    #             """, (date, ticker)).fetchone()
-
-    #             if price_row:
-    #                 price = price_row[0]
-    #             else:
-    #                 # 如果表中没有数据，从 Yahoo Finance 下载价格
-    #                 price = self.fetch_and_store_price(ticker, date)
-    #             print(f'ticker: {ticker}, cost_basis: {cost_basis}, price: {price}, quantity: {quantity}')
 
     def close(self):
         self.conn.close()

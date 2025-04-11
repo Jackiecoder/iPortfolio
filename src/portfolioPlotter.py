@@ -3,8 +3,9 @@ import sqlite3
 import yfinance as yf
 from datetime import datetime, timedelta
 import matplotlib.dates as mdates
-from portfolioDisplayer_util import PortfolioDisplayerUtil, Util
+from iPortfolio_util import PortfolioDisplayerUtil, Util
 from const import *
+from util import Util
 
 class Plotter:
     def __init__(self, db_name="portfolio.db"):
