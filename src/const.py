@@ -4,6 +4,7 @@ CASH_PATH = f"{TRANSACTIONS_PATH}cash/cash.csv"
 
 # output data
 OUTPUT_PATH = "results/"
+OUTPUT_DASHBOARD_PATH = f"{OUTPUT_PATH}dashboard/"
 ROR_TABLE_PATH = f"{OUTPUT_PATH}ror_table/"
 ROR_TOTAL_TABLE_PATH = f"{ROR_TABLE_PATH}ror_total_table/"
 ROR_SUMMARY_TABLE_PATH = f"{ROR_TABLE_PATH}ror_summary_table/"
@@ -12,7 +13,7 @@ DBVIEWER_PATH = f"{OUTPUT_PATH}dbviewer/"
 TICKER_CHART_PATH = f"{OUTPUT_PATH}plot_ticker_line_chart/"
 
 # plotter
-NUM_OF_PLOT = 16
+NUM_OF_PLOT = 22
 
 # date match
 DATES = {

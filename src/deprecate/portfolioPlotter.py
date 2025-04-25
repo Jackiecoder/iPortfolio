@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import sqlite3
 import yfinance as yf
 from datetime import datetime, timedelta
-import matplotlib.dates as mdates
 from iPortfolio_util import PortfolioDisplayerUtil, Util
 from const import *
 from util import Util
@@ -166,9 +165,13 @@ class Plotter:
         # 绘制线性图
         plt.figure(figsize=(18, 9))
         plt.plot(dates, total_values, label="Total Asset Value (Excluding cash)", linestyle='-')
+
+        colors = ['blue', 'green', 'purple']
         # 在每个点上标注数值
         for i, (x, y_value) in enumerate(zip(dates, total_values)):
-            plt.text(x, y_value, f"{int(y_value):,}", fontsize=16, ha='center', va='bottom', color='green')  # 标注总资产值
+            color = colors[i % len(colors)]
+            y_format = f"{y_value / 1_000:.1f}K"
+            plt.text(x, y_value, f"{y_format}", fontsize=16, ha='center', va='bottom', color=color)  # 标注总资产值
 
         # Calculate and show percentage of profit increase        
         last_value = total_values[-1]

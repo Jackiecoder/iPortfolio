@@ -16,6 +16,7 @@ class Util:
 
     @staticmethod
     def fetch_and_store_price(db_conn, ticker, date):
+        print("Util.fetch_and_store_price is deprecated, please use DbAccessor instead.")
         """
         从 Yahoo Finance 获取指定日期的股票价格，并存储到 daily_prices 表。
         """
@@ -148,8 +149,10 @@ class Util:
         except Exception as e:
             print(f"Error fetching price for {ticker} on {date}: {e}")
 
+
     @staticmethod
     def fetch_and_store_prices_for_multiple_dates(db_conn, ticker, dates):
+        print("Util.fetch_and_store_prices_for_multiple_dates is deprecated, please use DbAccessor instead.")
         """
         从 Yahoo Finance 获取指定日期列表的股票价格，并存储到 daily_prices 表。
         """

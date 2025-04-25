@@ -13,7 +13,7 @@ class TRANSACTIONS(Enum):
     CRYPTO_FEE = "crypto_fee"
     INVALID = "invalid"
 
-class DbLoader:
+class DbPopulator:
     def __init__(self, db_name="portfolio.db"):
         self.conn = sqlite3.connect(db_name)
         self._create_tables()

@@ -2,16 +2,13 @@ import sqlite3
 import yfinance as yf
 import csv
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
-import pytz
 import os
-import matplotlib.dates as mdates
-# from iPortfolio_util import PortfolioDisplayerUtil, Util
 from const import *
 from util import Util
 
 class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):
+        print("PortfolioManager is deprecated, please use DbLoader instead.")
         self.conn = sqlite3.connect(db_name)
         self.create_tables()
         self.stock_splits = self._load_stock_splits(f'{TRANSACTIONS_PATH}stock_split.csv')

@@ -1,9 +1,7 @@
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
-from datetime import datetime
 from iPortfolio_util import PortfolioDisplayerUtil
-from util import Util
 
 class TickerRORPlotter:
     def __init__(self, db_name='portfolio.db'):

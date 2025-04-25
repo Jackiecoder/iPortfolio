@@ -1,26 +1,22 @@
-from portfolioManager import PortfolioManager
-from iPortfolio_dbloader import DbLoader
-from databaseViewer import DatabaseViewer
-from portfolioPlotter import Plotter
-from portfolioDisplayer import Displayer
-from portfolioTickerPlotter import TickerRORPlotter
+from iPortfolio_dbPopulator import DbPopulator
+from iPortfolio_dbViewer import DatabaseViewer
+from iPortfolio_plotter import Plotter
+from iPortfolio_dashboard import AssetDashboard
 from iPortfolio_util import PortfolioDisplayerUtil, Util
-from util import Util
 from const import *
 from const_private import *
-from datetime import datetime, timedelta
+from datetime import datetime
 
 def load_transactions():
     clear_table()
     print(f"{title_line} Loading transactions... {title_line}")
-    db_loader = DbLoader()
+    db_loader = DbPopulator()
     for cat in TRANSACTIONS_CATS:
         db_loader.load_transactions_from_folder(TRANSACTIONS_PATH + cat + "/")
     db_loader.load_daily_cash_from_csv(CASH_PATH)
     db_loader.populate_transaction_db()
     db_loader.verify_table_size()
     db_loader.close()
-
 
 def view_database():
     print(f"{title_line} Saving database to CSV... {title_line}")
@@ -34,17 +30,7 @@ def view_database():
 
 def clear_table():
     print(f"{title_line} Clearing tables... {title_line}")
-    # 初始化 PortfolioManager 并添加一些交易记录
-    # portfolio = PortfolioManager()
-    # # 清空 transactions 表
-    # portfolio.clear_table("transactions")
-    # # 清空 stock_data 表
-    # portfolio.clear_table("stock_data")
-    # # clear daily_cash table
-    # portfolio.clear_table("daily_cash")
-    # # clear daily_prices table
-    # portfolio.clear_table("realized_gains")
-    db_loader = DbLoader()
+    db_loader = DbPopulator()
     db_loader.clear_table("transactions")
     db_loader.clear_table("stock_data")
     db_loader.clear_table("daily_cash")
@@ -55,7 +41,11 @@ def plot_line_chart():
     pt = Plotter()
     for date_str, (date_num, date_unit) in DATES.items():
         print(f"Plotting line chart for {date_str}...")
-        pt.plot_line_chart_ends_at_today(file_name= f"{CHART_PATH}portfolio_line_chart_{date_unit}_{date_str}.png", 
+        if date_str in ("1M", "3M", "YTD"):
+            path = OUTPUT_DASHBOARD_PATH
+        else:
+            path = CHART_PATH
+        pt.plot_line_chart_ends_at_today(file_name= f"{path}portfolio_line_chart_{date_unit}_{date_str}.png", 
                                         time_period=date_num, 
                                         time_str=date_str)
 
@@ -92,71 +82,79 @@ def plot_ticker_line_chart():
                                     time_period=date_num,
                                     time_str=date_str)
 
-def display_portfolio_ror(yyyy_mm_dd, previous_range = 2):
-    print(f"{title_line} Displaying portfolio ror... {title_line}")
-    if yyyy_mm_dd:
-        display_portfolio_ror_util(yyyy_mm_dd)
+# def display_portfolio_ror(yyyy_mm_dd, previous_range = 2):
+#     print(f"{title_line} Displaying portfolio ror... {title_line}")
+#     if yyyy_mm_dd:
+#         display_portfolio_ror_util(yyyy_mm_dd)
 
-    if not yyyy_mm_dd:
-        today = Util.get_today_est_dt()
-        days = [today - timedelta(days=i) for i in range(previous_range)]
-        Util.log(days)
-        for day in days:
-            print(f"Generating portfolio snapshot for {day.strftime('%Y-%m-%d')}...")
-            yyyy_mm_dd = [day.strftime("%Y-%m-%d").split("-")]
-            display_portfolio_ror_util(yyyy_mm_dd)
+#     if not yyyy_mm_dd:
+#         today = Util.get_today_est_dt()
+#         days = [today - timedelta(days=i) for i in range(previous_range)]
+#         Util.log(days)
+#         for day in days:
+#             print(f"Generating portfolio snapshot for {day.strftime('%Y-%m-%d')}...")
+#             yyyy_mm_dd = [day.strftime("%Y-%m-%d").split("-")]
+#             display_portfolio_ror_util(yyyy_mm_dd)
 
-def display_portfolio_ror_util(yyyy_mm_dd):
-    if not yyyy_mm_dd:
-        print(f"Invalid date: {yyyy_mm_dd}")
-        return
+# def display_portfolio_ror_util(yyyy_mm_dd):
+#     if not yyyy_mm_dd:
+#         print(f"Invalid date: {yyyy_mm_dd}")
+#         return
 
-    pd = Displayer()
-    for yyyy, mm, dd in yyyy_mm_dd:
-        print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
-        ror_df, summary_df, cat_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
-        print("Generating rate of return chart...")
-        pd.save_df_as_png(df = ror_df, 
-                          filename=ROR_TOTAL_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Total.png",
-                          title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
-        print("Generating portfolio summary...")
-        pd.save_df_as_png(df = summary_df, 
-                          filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Summary.png",
-                          title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
+#     pd = Displayer()
+#     for yyyy, mm, dd in yyyy_mm_dd:
+#         print(f"Generating portfolio snapshot for {yyyy}-{mm}-{dd}...")
+#         ror_df, summary_df, cat_df = pd.calculate_rate_of_return_v2(f"{yyyy}-{mm}-{dd}")
+#         print("Generating rate of return chart...")
+#         pd.save_df_as_png(df = ror_df, 
+#                           filename=ROR_TOTAL_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Total.png",
+#                           title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
+#         print("Generating portfolio summary...")
+#         pd.save_df_as_png(df = summary_df, 
+#                           filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Summary.png",
+#                           title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
 
-        print("Generating category summary...")
-        pd.save_df_as_png(df = cat_df, 
-                          filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Category.png",
-                          title=f"Portfolio Category {yyyy}-{mm}-{dd}")
-    pd.close()
+#         print("Generating category summary...")
+#         pd.save_df_as_png(df = cat_df, 
+#                           filename=ROR_SUMMARY_TABLE_PATH + f"{yyyy}_{mm}_{dd}_Category.png",
+#                           title=f"Portfolio Category {yyyy}-{mm}-{dd}")
+#     pd.close()
 
 def display_portfolio_ror_latest():
     print(f"{title_line} Displaying today's portfolio ror... {title_line}")
-    pd = Displayer()
-    ror_df, summary_df, cat_df = pd.calculate_rate_of_return_latest()
-    yyyy, mm, dd = Util.get_today_est_str().split("-")
+    asset_dashboard = AssetDashboard()
+    path = OUTPUT_DASHBOARD_PATH
+
+    yyyy, mm, dd, time = Util.get_current_time_est_str().split("-")
+    today = f"{yyyy}-{mm}-{dd}"
+    ror_df, summary_df, cat_df, compare_df = asset_dashboard.calculate_ror(today)
+
+    hour, minute, second = time.split(":")
     print(f"Generating rate of return chart for {yyyy}-{mm}-{dd}...")
-    pd.save_df_as_png(df = ror_df, 
-                      filename=ROR_TOTAL_TABLE_PATH + "9999-99-99_Total.png",
-                      title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd}")
+    asset_dashboard.save_df_as_png(ori_df = ror_df, 
+                      filename=path + "9999-99-99_Total.png",
+                      title=f"Portfolio Rate of Return {yyyy}-{mm}-{dd} {hour}:{minute}:{second}")
     print(f"Generating portfolio summary for {yyyy}-{mm}-{dd}...")
-    pd.save_df_as_png(df = summary_df, 
-                        filename=ROR_SUMMARY_TABLE_PATH + f"9999-99-99_Summary.png",
-                        title=f"Portfolio Summary {yyyy}-{mm}-{dd}")
+    asset_dashboard.save_df_as_png(ori_df = summary_df, 
+                        filename=path + f"9999-99-99_Summary.png",
+                        title=f"Portfolio Summary {yyyy}-{mm}-{dd} {hour}:{minute}:{second}")
 
     print(f"Generating category summary for {yyyy}-{mm}-{dd}...")
-    pd.save_df_as_png(df = cat_df, 
-                        filename=ROR_SUMMARY_TABLE_PATH + f"9999-99-99_Category.png",
-                        title=f"Portfolio Category {yyyy}-{mm}-{dd}")
-    pd.close()
+    asset_dashboard.save_df_as_png(ori_df = cat_df, 
+                        filename=path + f"9999-99-99_Category.png",
+                        title=f"Portfolio Category {yyyy}-{mm}-{dd} {hour}:{minute}:{second}")
+    
+    print(f"Generating compare summary for {yyyy}-{mm}-{dd}...")
+    asset_dashboard.save_df_as_png(ori_df = compare_df, 
+                        filename=path + f"9999-99-99_Compare.png",
+                        title=f"Portfolio Compare {yyyy}-{mm}-{dd} {hour}:{minute}:{second}")
 
-def display_ticker_ror():
-    print("{title_line} Displaying ticker ror... {title_line}")
-    ror_plotter = TickerRORPlotter()
-    ror_plotter.plot_all_tickers()
+# def display_ticker_ror():
+#     print("{title_line} Displaying ticker ror... {title_line}")
+#     ror_plotter = TickerRORPlotter()
+#     ror_plotter.plot_all_tickers()
 
 def test():
-    # PortfolioManager()
     dbv = DatabaseViewer()
     pdu = PortfolioDisplayerUtil()
     pdu.clear_daily_prices(date="2024-12-16", before=False)

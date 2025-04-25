@@ -38,9 +38,7 @@ e.g.
 
 `docker-compose up -d`
 
-`docker-compose exec app /bin/bash`
-
-`./app.py`
+`docker-compose exec app /bin/bash ./app.sh`
 
 ## TODO  
 1. Total period should be the holding period. e.g. holding stock A from day1 to day10, and then from day100 to day110. Then total period should be 20 days, instead of 110 days. 
