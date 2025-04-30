@@ -7,3 +7,4 @@ text.txt
 *.png
 !transactions/demo_msft.csv
 const_private.py
+logs

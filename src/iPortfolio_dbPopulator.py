@@ -1,7 +1,6 @@
 import sqlite3
 from const import TRANSACTIONS_PATH
 import csv
-from util import Util
 import os
 from enum import Enum
 
@@ -93,15 +92,15 @@ class DbPopulator:
                 if ticker not in stock_splits:
                     stock_splits[ticker] = []
                 stock_splits[ticker].append((date, float(before_split), float(after_split)))
-        Util.log(f"Loaded stock splits: {stock_splits}")
+        #Util.log(f"Loaded stock splits: {stock_splits}")
         return stock_splits
     
     def _adjust_quantity_for_splits(self, ticker, old_date, new_date, old_quantity, old_cost_basis):
         if ticker in self.stock_splits:
             for split_date, before_split, after_split in sorted(self.stock_splits[ticker]):
                 if (old_date == 0 or old_date < split_date) and new_date >= split_date:
-                    Util.log(f"Adjusting quantity for split: {ticker}, {split_date}, {before_split}, {after_split}")
-                    Util.log(f"Old quantity: {old_quantity}, old cost basis: {old_cost_basis}, old date: {old_date}, new date: {new_date}")
+                    #Util.log(f"Adjusting quantity for split: {ticker}, {split_date}, {before_split}, {after_split}")
+                    #Util.log(f"Old quantity: {old_quantity}, old cost basis: {old_cost_basis}, old date: {old_date}, new date: {new_date}")
                     old_quantity *= (after_split / before_split)
                     old_cost_basis /= (after_split / before_split)
 
@@ -125,7 +124,7 @@ class DbPopulator:
             ------------------------------------------------------------------------------------------
             quantity < 0     |     X                    |    sell      |    crpto fee (paid by crypto)
         '''
-        Util.log(f"Checking transaction: {cost}, {quantity}")
+        #Util.log(f"Checking transaction: {cost}, {quantity}")
         if cost > 0 and quantity > 0: 
             return TRANSACTIONS.BUY
         elif cost < 0 and quantity < 0:
@@ -168,18 +167,18 @@ class DbPopulator:
                                                    old_quantity=quantity,
                                                    old_cost_basis=cost_basis)
         
-        Util.log(f"Adjusted quantity: {quantity}, cost basis: {cost_basis}")
+        #Util.log(f"Adjusted quantity: {quantity}, cost basis: {cost_basis}")
 
         if transaction_type == TRANSACTIONS.BUY:
             # BUY, update total quantity, cost_basis 
             total_cost = round(cost_basis * quantity + tran_cost, 8)
             quantity += tran_quantity
             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
-            Util.log(f"Process BUY operation. Total cost: {total_cost}, quantity: {quantity}")
+            #Util.log(f"Process BUY operation. Total cost: {total_cost}, quantity: {quantity}")
         elif transaction_type == TRANSACTIONS.SELL:
             # SELL, update quantity 
             quantity += tran_quantity
-            Util.log(f"Process SELL operation. Quantity: {quantity}")
+            #Util.log(f"Process SELL operation. Quantity: {quantity}")
         elif transaction_type == TRANSACTIONS.DIVIDEND:
             # DIVIDEND, update realized_gain only
             pass
@@ -188,13 +187,13 @@ class DbPopulator:
             total_cost = round(cost_basis * quantity + tran_cost, 8)
             quantity += tran_quantity
             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
-            Util.log(f"Process TRANSACTION FEE operation. Total cost: {total_cost}, cost basis: {cost_basis}")
+            #Util.log(f"Process TRANSACTION FEE operation. Total cost: {total_cost}, cost basis: {cost_basis}")
         elif transaction_type == TRANSACTIONS.CRYPTO_FEE:
             # CRYPTO FEE, update quantity and cost_basis
             total_cost = round(cost_basis * quantity + tran_cost, 8)
             quantity += tran_quantity
             cost_basis = round(total_cost / quantity, 8) if quantity != 0 else 0
-            Util.log(f"Process CRYPTO FEE operation. Quantity: {quantity}")
+            #Util.log(f"Process CRYPTO FEE operation. Quantity: {quantity}")
         else:
             raise ValueError(f"Invalid transaction: {date}, {ticker}, {tran_cost}, {tran_quantity}")
         
@@ -300,7 +299,7 @@ class DbPopulator:
         # Insert transactions into the database
         transactions = self.transactions
         for (date, ticker, source), data in sorted(transactions.items(), key=lambda x: x[0][0]):
-            Util.log(f"Processing transaction: {date}, {ticker}, {source}, {data['cost']}, {data['quantity']}")
+            #Util.log(f"Processing transaction: {date}, {ticker}, {source}, {data['cost']}, {data['quantity']}")
             self._add_transaction(date, ticker, data['cost'], data['quantity'], source)
             self._update_stock_data(date, ticker, source, data['cost'], data['quantity'])
             self._update_realized_gains(date, ticker, source, data['cost'], data['quantity'])
@@ -343,7 +342,7 @@ class DbPopulator:
         for file_name in os.listdir(folder_path):
             if file_name.endswith('.csv') and file_name != 'demo_msft.csv':
                 file_path = os.path.join(folder_path, file_name)
-                Util.log(f"Loading transactions from file: {file_name}")
+                #Util.log(f"Loading transactions from file: {file_name}")
                 self.load_transactions_from_csv(file_path)
 
     def clear_table(self, table_name):

@@ -61,7 +61,7 @@ def plot_historical_line_chart():
     for date in dates:
         date_dt = datetime.strptime(date, "%Y-%m-%d")
         date_num, date_str = "YTD", "YTD"
-        pt.plot_line_chart(file_name=f"{CHART_PATH}portfolio_line_chart_{date}_{date_str}.png",
+        pt.plot_line_chart(file_name=f"{OUTPUT_DASHBOARD_PATH}portfolio_line_chart_{date}_{date_str}.png",
                                         end_date=date_dt,
                                         time_period=date_num,
                                         time_str=date_str)  

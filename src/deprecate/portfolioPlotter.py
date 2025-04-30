@@ -4,7 +4,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from iPortfolio_util import PortfolioDisplayerUtil, Util
 from const import *
-from util import Util
+from deprecate.util import Util
 
 class Plotter:
     def __init__(self, db_name="portfolio.db"):

@@ -4,7 +4,7 @@ import csv
 from datetime import datetime, timedelta
 import os
 from const import *
-from util import Util
+from deprecate.util import Util
 
 class PortfolioManager:
     def __init__(self, db_name="portfolio.db"):

@@ -404,27 +404,12 @@ class AssetDashboard:
                                 cell.set_text_props(color="red")  # 负值为红色
                         except ValueError:
                             pass  # 如果转换失败，跳过
-                        # if float(value) > 0:
-                        #     cell.set_text_props(color="green")  # 正值为绿色
-                        # elif float(value) < 0:
-                        #     cell.set_text_props(color="red")  # 负值为红色
                 # 设置交替行背景色
                 if row % 2 == 0:
                     cell.set_facecolor('#f0f0f0')
+                    # cell.set_facecolor('#d9d9d9')  # 浅灰色
                 else:
                     cell.set_facecolor('#ffffff')
-        # # Set alternating row colors
-        # for _, key in enumerate(table.get_celld().keys()):
-        #     cell = table.get_celld()[key]
-        #     if key[0] == 0:
-        #         cell.set_fontsize(12)
-        #         cell.set_text_props(weight='bold')
-        #     else:
-        #         cell.set_fontsize(10)
-        #         if key[0] % 2 == 0:
-        #             cell.set_facecolor('#f0f0f0')
-        #         else:
-        #             cell.set_facecolor('#ffffff')
 
         # 调整字体大小
         table.auto_set_font_size(False)

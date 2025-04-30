@@ -6,6 +6,7 @@ import pandas_market_calendars as mcal
 from const_private import *
 from const import *
 import pytz
+import os
 
 TEMP_PRICE_MAP = {} # DATE: {TICKER: PRICE}
 
@@ -393,3 +394,31 @@ class Util:
         date_obj = datetime.strptime(date, "%Y-%m-%d")
         new_date = date_obj - timedelta(days=days)
         return new_date.strftime("%Y-%m-%d")
+
+    @staticmethod
+    def log_to_file(file, line, category, message):
+        """
+        Logs a message to a log file with the specified file, line, category, and message.
+
+        Parameters:
+        - file (str): The file where the log is generated.
+        - line (int): The line number where the log is generated.
+        - category (str): The category of the log.
+        - message (str): The log message.
+        """
+        log_dir = "logs"
+        log_file = os.path.join(log_dir, "application.log")
+
+        # Ensure the log directory exists
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+
+        # Format the log entry
+        log_entry = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {file}:{line} [{category}] {message}\n"
+
+        # Write the log entry to the file
+        with open(log_file, "a") as f:
+            f.write(log_entry)
+
+        print(f"Log written to {log_file}")
+

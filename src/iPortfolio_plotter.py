@@ -6,7 +6,7 @@ from iPortfolio_util import Util
 from iPortfolio_dbAccessor import DbAccessor
 
 class Plotter:
-    def __init__(self, db_name="portfolio.db"):
+    def __init__(self):
         pass
 
     def _plot_line_chart_util(self, latest_cost, total_profits, dates, file_name, time_str):
@@ -37,7 +37,7 @@ class Plotter:
         # 保存/显示线性图
         plt.xlabel("Date")
         plt.ylabel("Value")
-        plt.title(f"Portfolio Asset Value ({time_str})")
+        plt.title(f"Portfolio Asset Value ({time_str}), from {dates[0]} to {dates[-1]}")
         plt.legend()
 
         # Show percentage of profit increase under the legend
@@ -81,9 +81,7 @@ class Plotter:
                     continue
 
                 price = DbAccessor.fetch_and_store_price(ticker=ticker, date=date)
-                # print(type(date), date)
-                # print(f"ticker: {ticker}, date: {date}, price: {price}, quantity: {quantity}, cost_basis: {cost_basis}")
-
+                
                 value = price * quantity
                 cost = cost_basis * quantity
                 profit = value - cost

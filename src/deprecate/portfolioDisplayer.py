@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from datetime import datetime, timedelta
 from iPortfolio_util import PortfolioDisplayerUtil, Util
-from util import Util
+from deprecate.util import Util
 
 class Displayer(PortfolioDisplayerUtil):
     def __init__(self, db_name="portfolio.db", debug=False):
