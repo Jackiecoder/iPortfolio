@@ -7,6 +7,7 @@ from const_private import *
 from const import *
 import pytz
 import os
+import inspect
 
 TEMP_PRICE_MAP = {} # DATE: {TICKER: PRICE}
 
@@ -414,11 +415,8 @@ class Util:
             os.makedirs(log_dir)
 
         # Format the log entry
-        log_entry = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {file}:{line} [{category}] {message}\n"
+        log_entry = f"[{Util.get_today_est_str()}] {file}:{line} [{category}] {message}\n"
 
         # Write the log entry to the file
         with open(log_file, "a") as f:
             f.write(log_entry)
-
-        print(f"Log written to {log_file}")
-

@@ -3,6 +3,9 @@ from datetime import datetime
 from iPortfolio_util import Util
 import pandas as pd
 import matplotlib.pyplot as plt
+import inspect
+
+FILE_NAME = __file__
 
 class AssetDashboard:
     
@@ -52,19 +55,12 @@ class AssetDashboard:
     def _date_before_stockprice_and_profit(self, ticker: str, date: str, date_delta: int):
         previous_date = Util.get_date_before(date, date_delta)
         stock_price, profit = self._date_stockprice_and_profit(ticker, previous_date)
+        log = f"Ticker: {ticker}, Date: {previous_date}, Stock Price: {stock_price}, Profit: {profit}"
+        Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
 
         return stock_price, profit
 
     def _calc_ror_helper(self, ticker: str, date: str) -> dict:
-        stock_price = DbAccessor.fetch_and_store_price(ticker, date)
-        stock_price_1d, profit_1d = self._date_before_stockprice_and_profit(ticker, date, 1)
-        stock_price_3d, profit_3d = self._date_before_stockprice_and_profit(ticker, date, 3)
-        stock_price_7d, profit_7d = self._date_before_stockprice_and_profit(ticker, date, 7)
-        stock_price_30d, profit_30d = self._date_before_stockprice_and_profit(ticker, date, 30)
-        year = int(date.split("-")[0])
-        stock_price_ytd, profit_ytd = self._date_stockprice_and_profit(ticker, f'{year}-01-01')
-        # ytd_delta = Util.calculate_ytd_date_delta(date)
-        # stock_price_ytd, profit_ytd = self._date_before_stockprice_and_profit(ticker, date, ytd_delta)
         quantity = DbAccessor.get_stock_quantity(ticker, date)
         cost_basis = DbAccessor.get_cost_basis(ticker, date)
         realized_gain = DbAccessor.get_realized_gain(ticker, date)
@@ -81,6 +77,18 @@ class AssetDashboard:
             row["Total Cost"] = 0
             row["Unrealized Gain"] = 0
             return row
+                        
+        stock_price = DbAccessor.fetch_and_store_price(ticker, date)
+
+        log = f"Ticker: {ticker}, Date: {date}, Stock Price: {stock_price}"
+        Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
+        
+        stock_price_1d, profit_1d = self._date_before_stockprice_and_profit(ticker, date, 1)
+        stock_price_3d, profit_3d = self._date_before_stockprice_and_profit(ticker, date, 3)
+        stock_price_7d, profit_7d = self._date_before_stockprice_and_profit(ticker, date, 7)
+        stock_price_30d, profit_30d = self._date_before_stockprice_and_profit(ticker, date, 30)
+        year = int(date.split("-")[0])
+        stock_price_ytd, profit_ytd = self._date_stockprice_and_profit(ticker, f'{year}-01-01')
 
         '''
         Otherwise, calculate the holding value, cost, profit, and rate of return
@@ -422,5 +430,4 @@ class AssetDashboard:
         # 保存为 PNG
         plt.savefig(filename, bbox_inches='tight', dpi=300)
         plt.close(fig)
-
 
