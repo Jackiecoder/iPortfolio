@@ -4,7 +4,7 @@ from iPortfolio_util import Util
 from const_private import *
 from datetime import datetime, timedelta
 import yfinance as yf
-    
+import inspect
 
 TEMP_PRICE_MAP = {}
 
@@ -104,6 +104,23 @@ class DbAccessor:
             # yf.download [start_date, end_date), start_date is included, end_date is excluded
             # https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html#yfinance.download
             history = yf.download(ticker, start=start_date, end=end_date)
+
+            # TODO: 对于crypto来说，如果是latest price, 需要不同的workflow
+            #  比如现在是5/08，得到
+            # Price              Close          High           Low          Open       Volume
+            # Ticker           BTC-USD       BTC-USD       BTC-USD       BTC-USD      BTC-USD
+            # Date                                                                           
+            # 2025-05-01  96492.335938  97437.960938  94153.632812  94212.859375  32875889623
+            # 2025-05-02  96910.070312  97905.898438  96375.945312  96494.968750  26421924677
+            # 2025-05-03  95891.796875  96943.882812  95821.289062  96904.632812  15775154889
+            # 2025-05-04  94315.976562  96318.921875  94173.429688  95877.187500  18198688416
+            # 2025-05-05  94748.054688  95193.187500  93566.265625  94319.562500  25816260327
+            # 2025-05-06  96802.476562  96889.179688  93399.859375  94748.382812  26551275827
+            # 2025-05-08  99306.484375  99386.750000  96940.203125  97037.687500  47684251648
+            # 这里应该用05/08的close price
+
+            # Util.log_to_file(__file__, inspect.currentframe().f_lineno, "INFO", f"Price data fetched for {ticker} on {date}: \n{history}")
+            # exit(0)
             if history.empty:
                 raise ValueError(f"No price data found for {ticker} on {date}")
 
@@ -112,8 +129,19 @@ class DbAccessor:
             last_valid_price = list(round(price_series.iloc[-1], 8))[0]
             last_valid_date = price_series.index[-1].strftime("%Y-%m-%d")
 
-            final_price = DbAccessor._save_price_to_db(db_conn, date, ticker, last_valid_price, last_valid_date)
+            is_market_open = Util.is_market_open(date)
+            today = Util.get_today_est_str()
+            if ticker in CRYPTO_TICKERS or (ticker not in CRYPTO_TICKERS and is_market_open == True):
+                # if it's crypto, only save price if today > date, otherwise price will fetch on the fly
+                # if market is close, means this date will NOT have price data, 
+                # then just save the last open date, price to db
+                if today > date:
+                    DbAccessor._save_price_to_db(db_conn, date, ticker, last_valid_price, last_valid_date)
 
+
+            TEMP_PRICE_MAP[date] = TEMP_PRICE_MAP.get(date, {})
+            TEMP_PRICE_MAP[date][ticker] = last_valid_price
+            
             return last_valid_price
 
         except Exception as e:
@@ -170,4 +198,13 @@ class DbAccessor:
             if not result:
                 return 0
             return result[0] 
-        
+
+    @staticmethod
+    def delete_daily_price(date):
+        with sqlite3.connect("portfolio.db") as db_conn:
+            x = db_conn.execute("DELETE FROM daily_prices WHERE date = ?", (date,))
+            if x.rowcount == 0:
+                print(f"No daily prices found for date: {date}")
+            else:
+                print(f"Deleted {x.rowcount} daily prices for date: {date}")
+            db_conn.commit()

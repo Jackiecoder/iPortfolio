@@ -299,6 +299,26 @@ class Util:
         return dates
 
     @staticmethod
+    def get_all_dates(start_date, end_date, time_period):
+        """
+        获取从 start_date 到 end_date 的所有日期列表，返回包含所有日期的列表。
+        start_date 和 end_date 必须包括在内。
+        
+        Parameters:
+        - start_date (str): 起始日期，格式为 "YYYY-MM-DD"
+        - end_date (str): 结束日期，格式为 "YYYY-MM-DD"
+        
+        Returns:
+        - List[str]: 包含从 start_date 到 end_date 的所有日期的列表
+        """
+
+        delta = time_period + 1
+        dates = [start_date + timedelta(days=i) for i in range(delta)]
+        dates = [date.strftime("%Y-%m-%d") for date in dates]
+        
+        return dates
+
+    @staticmethod
     def calculate_ytd_date_delta_ends_today():
         """
         计算 Year-to-Date (YTD) 的日期差异，返回当前日期和当年年初的日期之间的天数差异。

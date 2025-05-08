@@ -18,8 +18,8 @@ class AssetDashboard:
             "Latest Price": None,
             "1d%": None,
             "1dp": None,
-            "3d%": None,
-            "3dp": None,
+            "2d%": None,
+            "2dp": None,
             "7d%": None,
             "7dp": None,
             "30d%": None,
@@ -56,7 +56,7 @@ class AssetDashboard:
         previous_date = Util.get_date_before(date, date_delta)
         stock_price, profit = self._date_stockprice_and_profit(ticker, previous_date)
         log = f"Ticker: {ticker}, Date: {previous_date}, Stock Price: {stock_price}, Profit: {profit}"
-        Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
+        # Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
 
         return stock_price, profit
 
@@ -81,10 +81,10 @@ class AssetDashboard:
         stock_price = DbAccessor.fetch_and_store_price(ticker, date)
 
         log = f"Ticker: {ticker}, Date: {date}, Stock Price: {stock_price}"
-        Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
+        # Util.log_to_file(FILE_NAME, inspect.currentframe().f_lineno, "INFO", log)
         
         stock_price_1d, profit_1d = self._date_before_stockprice_and_profit(ticker, date, 1)
-        stock_price_3d, profit_3d = self._date_before_stockprice_and_profit(ticker, date, 3)
+        stock_price_2d, profit_2d = self._date_before_stockprice_and_profit(ticker, date, 2)
         stock_price_7d, profit_7d = self._date_before_stockprice_and_profit(ticker, date, 7)
         stock_price_30d, profit_30d = self._date_before_stockprice_and_profit(ticker, date, 30)
         year = int(date.split("-")[0])
@@ -110,8 +110,8 @@ class AssetDashboard:
         row["Latest Price"] = round(stock_price, 2)
         row["1d%"] = round((stock_price - stock_price_1d) / stock_price_1d * 100, 2) if stock_price_1d else None
         row["1dp"] = round(profit - profit_1d, 2) if stock_price_1d else None
-        row["3d%"] = round((stock_price - stock_price_3d) / stock_price_3d * 100, 2) if stock_price_3d else None
-        row["3dp"] = round(profit - profit_3d, 2) if stock_price_3d else None
+        row["2d%"] = round((stock_price - stock_price_2d) / stock_price_2d * 100, 2) if stock_price_2d else None
+        row["2dp"] = round(profit - profit_2d, 2) if stock_price_2d else None
         row["7d%"] = round((stock_price - stock_price_7d) / stock_price_7d * 100, 2) if stock_price_7d else None
         row["7dp"] = round(profit - profit_7d, 2) if stock_price_7d else None
         row["30d%"] = round((stock_price - stock_price_30d) / stock_price_30d * 100, 2) if stock_price_30d else None
@@ -156,7 +156,7 @@ class AssetDashboard:
         total_realized_gain = sum(item["Realized Gain"] for item in data if item["Realized Gain"] is not None)
         total_ror = (total_profit / (total_value - total_profit)) * 100 if total_cost > 0 else None
         total_1d = sum(item["1dp"] for item in data if item["1dp"] is not None)
-        total_3d = sum(item["3dp"] for item in data if item["3dp"] is not None)
+        total_2d = sum(item["2dp"] for item in data if item["2dp"] is not None)
         total_7d = sum(item["7dp"] for item in data if item["7dp"] is not None)
         total_30d = sum(item["30dp"] for item in data if item["30dp"] is not None)
         total_ytd = sum(item["YTDp"] for item in data if item["YTDp"] is not None)
@@ -177,7 +177,7 @@ class AssetDashboard:
         row["Last Date"] = None
         row["Annualized RoR (%)"] = None
         row["1dp"] = round(total_1d, 2)
-        row["3dp"] = round(total_3d, 2)
+        row["2dp"] = round(total_2d, 2)
         row["7dp"] = round(total_7d, 2)
         row["30dp"] = round(total_30d, 2)
         row["YTDp"] = round(total_ytd, 2)
@@ -291,8 +291,8 @@ class AssetDashboard:
                         "Latest Price",
                         "1d%",
                         "1dp",
-                        "3d%",
-                        "3dp",
+                        "2d%",
+                        "2dp",
                         "7d%",
                         "7dp",
                         "30d%",

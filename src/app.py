@@ -28,6 +28,13 @@ def historical_ytd():
     ip_client.view_database()
     ip_client.plot_historical_line_chart()
 
+def delete_record(date):
+    Util.log_to_file(__file__, inspect.currentframe().f_lineno, "INFO", "Executing clear_record")
+    print("Welcome to Portfolio Manager")
+    print("Start processing clear record")
+    ip_client.delete_daily_prices(date)
+    ip_client.view_database()
+
 def main():
     if len(sys.argv) > 1:
         arg = sys.argv[1]
@@ -37,6 +44,15 @@ def main():
         elif arg == "--ytd":
             Util.log_to_file(__file__, inspect.currentframe().f_lineno, "INFO", "Argument '--ytd' received")
             historical_ytd()
+        elif arg == "--delete" or arg == "--del":
+            Util.log_to_file(__file__, inspect.currentframe().f_lineno, "INFO", "Argument '--delete' received")
+            date = sys.argv[2] if len(sys.argv) > 2 else None
+            if date:
+                Util.log_to_file(__file__, inspect.currentframe().f_lineno, "INFO", f"Deleting record for date: {date}")
+                delete_record(date)
+            else:
+                Util.log_to_file(__file__, inspect.currentframe().f_lineno, "ERROR", "No date provided for deletion")
+                print("No date provided for deletion. Use '--delete <date>' or '--del <date>'.")
         else:
             Util.log_to_file(__file__, inspect.currentframe().f_lineno, "ERROR", f"Invalid argument: {arg}")
             print("Invalid argument. Use '-d' or '--ytd'.")

@@ -3,6 +3,7 @@ from iPortfolio_dbViewer import DatabaseViewer
 from iPortfolio_plotter import Plotter
 from iPortfolio_dashboard import AssetDashboard
 from iPortfolio_util import PortfolioDisplayerUtil, Util
+from iPortfolio_dbAccessor import DbAccessor
 from const import *
 from const_private import *
 from datetime import datetime
@@ -40,11 +41,13 @@ def plot_line_chart():
     print(f"{title_line} Plotting line chart... {title_line}")
     pt = Plotter()
     for date_str, (date_num, date_unit) in DATES.items():
-        print(f"Plotting line chart for {date_str}...")
         if date_str in ("1M", "3M", "YTD"):
             path = OUTPUT_DASHBOARD_PATH
         else:
+            # Don't need other charts
             path = CHART_PATH
+            continue
+        print(f"Plotting line chart for {date_str}...")
         pt.plot_line_chart_ends_at_today(file_name= f"{path}portfolio_line_chart_{date_unit}_{date_str}.png", 
                                         time_period=date_num, 
                                         time_str=date_str)
@@ -82,19 +85,9 @@ def plot_ticker_line_chart():
                                     time_period=date_num,
                                     time_str=date_str)
 
-# def display_portfolio_ror(yyyy_mm_dd, previous_range = 2):
-#     print(f"{title_line} Displaying portfolio ror... {title_line}")
-#     if yyyy_mm_dd:
-#         display_portfolio_ror_util(yyyy_mm_dd)
-
-#     if not yyyy_mm_dd:
-#         today = Util.get_today_est_dt()
-#         days = [today - timedelta(days=i) for i in range(previous_range)]
-#         Util.log(days)
-#         for day in days:
-#             print(f"Generating portfolio snapshot for {day.strftime('%Y-%m-%d')}...")
-#             yyyy_mm_dd = [day.strftime("%Y-%m-%d").split("-")]
-#             display_portfolio_ror_util(yyyy_mm_dd)
+def delete_daily_prices(date):
+    print(f"{title_line} Clearing daily prices... {title_line}")
+    DbAccessor.delete_daily_price(date)
 
 # def display_portfolio_ror_util(yyyy_mm_dd):
 #     if not yyyy_mm_dd:
